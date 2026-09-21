@@ -2966,10 +2966,17 @@ service cloud.firestore {
     if (modal) modal.classList.add('hidden');
     resetAllOnlineClientState();
 
+    let curNum = parseInt((currentOnlineRoomCode || "8888").replace(/\D/g, ""), 10);
+    if (isNaN(curNum)) curNum = 8888;
+    let nextNum = curNum - 1;
+    if (nextNum < 0) nextNum = 9999;
+    const nextRoomCode = String(nextNum).padStart(4, "0");
+    const nextDocPath = getOnlineRoomDoc(nextRoomCode);
+
     const updatedPlayers = (room.players || []).map(p => ({
       ...p,
       readyToStart: false,
-      role: null,
+      role: '',
       roleConfirmed: false,
       isAmbushed: false,
       isPermanentlyAmbushed: false,
@@ -2978,8 +2985,13 @@ service cloud.firestore {
       confusedRound: null
     }));
 
-    await db.doc(ONLINE_ROOM_DOC).update({
+    await db.doc(nextDocPath).set({
+      roomId: nextRoomCode,
       status: 'waiting',
+      gameState: 'ready',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastActivityTime: Date.now(),
+      startTimestamp: null,
       players: updatedPlayers,
       rounds: [],
       currentRoundIdx: 0,
@@ -2987,9 +2999,15 @@ service cloud.firestore {
       currentSpeakerId: null,
       lastCalculatedResult: null,
       gameOverData: null,
+      gameOverRestartVotes: {},
       restartVoteData: null,
       closeVoteData: null,
-      waitingSince: Date.now(),
+      waitingSince: Date.now()
+    });
+
+    await db.doc(ONLINE_ROOM_DOC).update({
+      status: 'migrating',
+      nextRoomCode: nextRoomCode,
       lastActivityTime: Date.now()
     });
     resetAllOnlineClientState();
@@ -3213,11 +3231,15 @@ service cloud.firestore {
         const totalCount = players.length;
         const readyCount = players.filter(p => votes[p.id] === true).length;
 
-        // 當所有人均按下按鈕後，實作安全狀態機 (State Machine) 重置過渡邏輯：
-        // 階段 1：先將 status/gameState 設為 'resetting'，鎖定 UI 並暫停舊資料處理，防範 Null 錯誤
+        // 修改2：當所有人均按下按鈕後，自動將開啟的房號 -1，開闢全新房間，徹底避免同房號卡死問題！
         if (readyCount >= totalCount && totalCount > 0) {
-          // 需求1：重置協議原子化 (Atomic Room Reset)
-          // 同步將全體玩家的 isReady / readyToStart、hasConfirmedRole / roleConfirmed、actionState 重設為初始狀態
+          let curNum = parseInt((currentOnlineRoomCode || "8888").replace(/\D/g, ""), 10);
+          if (isNaN(curNum)) curNum = 8888;
+          let nextNum = curNum - 1;
+          if (nextNum < 0) nextNum = 9999;
+          const nextRoomCode = String(nextNum).padStart(4, "0");
+          const nextDocPath = getOnlineRoomDoc(nextRoomCode);
+
           const updatedPlayers = players.map(p => ({
             ...p,
             readyToStart: false,
@@ -3233,9 +3255,15 @@ service cloud.firestore {
             confusedRound: null
           }));
 
-          transaction.update(docRef, {
+          // 1. 初始化新房間 (房號 -1)
+          const newDocRef = db.doc(nextDocPath);
+          await newDocRef.set({
+            roomId: nextRoomCode,
             status: 'waiting',
             gameState: 'ready',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastActivityTime: Date.now(),
+            startTimestamp: null,
             players: updatedPlayers,
             rounds: [],
             currentRoundIdx: 0,
@@ -3246,8 +3274,13 @@ service cloud.firestore {
             gameOverRestartVotes: {},
             restartVoteData: null,
             closeVoteData: null,
-            waitingSince: Date.now(),
-            startTimestamp: null,
+            waitingSince: Date.now()
+          });
+
+          // 2. 原房間廣播遷移信號 (status: migrating, nextRoomCode)，帶領全體玩家無縫切換到新房間
+          transaction.update(docRef, {
+            status: 'migrating',
+            nextRoomCode: nextRoomCode,
             lastActivityTime: Date.now()
           });
         } else {
@@ -3600,6 +3633,37 @@ service cloud.firestore {
       if (sn) sn.classList.add('hidden');
       const vf = document.getElementById('onlVotingFormSection');
       if (vf) vf.classList.remove('hidden');
+    }
+
+    // 修改2：偵測房間是否遷移至新房號 (房號 -1)
+    if (room.status === 'migrating' && room.nextRoomCode) {
+      const nextCode = room.nextRoomCode;
+      if (nextCode !== currentOnlineRoomCode) {
+        currentOnlineRoomCode = nextCode;
+        try {
+          sessionStorage.setItem('gudong_online_room_code', nextCode);
+        } catch(e) {}
+        const codeInput = document.getElementById('onlInputRoomCode');
+        if (codeInput) codeInput.value = nextCode;
+        const roomBadge = document.getElementById('onlLobbyRoomCodeBadge');
+        if (roomBadge) roomBadge.innerText = nextCode;
+
+        ONLINE_ROOM_DOC = getOnlineRoomDoc(nextCode);
+        resetAllOnlineClientState();
+        window._isDealingRoles = false;
+        _lobbyCountdownPendingStart = false;
+        if (_lobbyCountdownTimer) {
+          clearInterval(_lobbyCountdownTimer);
+          _lobbyCountdownTimer = null;
+        }
+        const cBox = document.getElementById('onlStartCountdownOverlay');
+        if (cBox) cBox.classList.add('hidden');
+
+        startOnlineRoomListener();
+        showOnlineSubView('onlSecLobby');
+        showToast(`✓ 全員重新開局！已自動遷移至新房號【${nextCode}】`, 'success', 3000);
+        return;
+      }
     }
 
     // 關鍵修復：偵測自己是否已被踢出房間！
@@ -5479,22 +5543,24 @@ else {
     window.onlConfirmFangZhen = onlConfirmFangZhen;
 
  function onlChooseLaoAbility(isActive) {
-      onlTempLaoActive = isActive;
+      onlTempLaoActive = !!isActive;
       const room = onlineRoomData;
-      const me = room.players.find(p => p.id === myOnlinePlayerId);
-      const curRound = room.rounds[room.currentRoundIdx];
-      const myLog = (curRound.turnLogs && curRound.turnLogs[myOnlinePlayerId]) || {};
-      renderOnlineRoleAbilitySection(room, me, curRound, myLog);
+      if (room && room.rounds && room.rounds[room.currentRoundIdx]) {
+        const curRound = room.rounds[room.currentRoundIdx];
+        curRound.laoChaoFengActive = !!isActive;
+        if (!curRound.turnLogs) curRound.turnLogs = {};
+        if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
+        curRound.turnLogs[myOnlinePlayerId].laoActive = !!isActive;
+        curRound.turnLogs[myOnlinePlayerId].ability = isActive ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（確定未發動）';
+        const me = room.players.find(p => p.id === myOnlinePlayerId);
+        renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
+      }
     }
     window.onlChooseLaoAbility = onlChooseLaoAbility;
 
     function onlToggleLaoState() {
       onlTempLaoActive = !onlTempLaoActive;
-      const room = onlineRoomData;
-      const me = room.players.find(p => p.id === myOnlinePlayerId);
-      const curRound = room.rounds[room.currentRoundIdx];
-      const myLog = (curRound.turnLogs && curRound.turnLogs[myOnlinePlayerId]) || {};
-      renderOnlineRoleAbilitySection(room, me, curRound, myLog);
+      onlChooseLaoAbility(onlTempLaoActive);
     }
     window.onlToggleLaoState = onlToggleLaoState;
 
@@ -5509,6 +5575,7 @@ else {
 
       if (!curRound.turnLogs) curRound.turnLogs = {};
       if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
+      curRound.turnLogs[myOnlinePlayerId].laoActive = !!onlTempLaoActive;
       curRound.turnLogs[myOnlinePlayerId].ability = onlTempLaoActive ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（確定未發動）';
       curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
 
@@ -5986,15 +6053,17 @@ async function onlConfirmPassNextPlayer() {
     const curRIdx = (room && room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
     const isCurrentRound = (r.roundNum === curRIdx + 1);
 
-    // 1. 老朝奉：自己頭像上方顯示 [開啟] 或 [關閉]
+    // 1. 老朝奉：該回合頭像上方顯示 [開啟] 或 [關閉] (各回合各自發動情況顯示，未開啟時嚴格顯示關閉)
     if (me.role === '老朝奉') {
       let isLao = false;
-      if (r.laoChaoFengActive === true) {
-        isLao = true;
-      } else if (isCurrentRound && onlTempLaoActive === true) {
-        isLao = true;
-      } else if (myLog.ability && myLog.ability.includes('開啟')) {
-        isLao = true;
+      if (r.laoChaoFengActive !== undefined && r.laoChaoFengActive !== null) {
+        isLao = (r.laoChaoFengActive === true);
+      } else if (isCurrentRound && (onlTempLaoActive !== undefined && onlTempLaoActive !== null)) {
+        isLao = (onlTempLaoActive === true);
+      } else if (myLog.laoActive !== undefined && myLog.laoActive !== null) {
+        isLao = (myLog.laoActive === true);
+      } else if (myLog.ability) {
+        isLao = myLog.ability.includes('開啟') && !myLog.ability.includes('未') && !myLog.ability.includes('關閉') && !myLog.ability.includes('不');
       }
       return `<span class="text-[8px] leading-tight font-mono font-black px-1 py-0.5 rounded mb-0.5 shadow-xs ${isLao ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse' : 'bg-neutral-800 text-neutral-400 border border-neutral-600'}">[${isLao ? '開啟' : '關閉'}]</span>`;
     }
@@ -7787,7 +7856,7 @@ pDiv.innerHTML = `
  // 依角色與回合解析並展示精確的技能發動目標與情形
  let abilityDesc = tLog.ability || '無操作';
  if (p.role === '老朝奉') {
-   const isLao = (rObj && rObj.laoChaoFengActive) || (tLog.ability && tLog.ability.includes('開啟'));
+   const isLao = (rObj && rObj.laoChaoFengActive === true) || (tLog.laoActive === true) || (tLog.ability && tLog.ability.includes('開啟') && !tLog.ability.includes('未') && !tLog.ability.includes('關閉') && !tLog.ability.includes('不'));
    abilityDesc = isLao ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（真偽正常）';
  } else if (p.role === '藥不然') {
    const ambushedId = (rObj && rObj.ambushedPlayerId) || tLog.yaoTargetId;
@@ -7971,9 +8040,11 @@ pDiv.innerHTML = `
       countdownNum.innerText = '準備';
       countdownNum.className = 'text-3xl font-black text-amber-400 my-1 animate-pulse';
 
-      // 依要求5：開始遊戲語音念完「遊戲即將開始」後再啟動 3, 2, 1 倒數機制
-      speak('遊戲即將開始', () => {
-        if (!_lobbyCountdownPendingStart) return;
+      // 依要求5：開始遊戲語音念完「遊戲即將開始」後再啟動 3, 2, 1 倒數機制 (附帶防死鎖看門狗)
+      let countdownStarted = false;
+      const triggerCountdownLoop = () => {
+        if (countdownStarted) return;
+        countdownStarted = true;
         _lobbyCountdownPendingStart = false;
 
         _lobbyCountdownVal = 3;
@@ -7991,7 +8062,6 @@ pDiv.innerHTML = `
             _lobbyCountdownTimer = null;
             countdownBox.classList.add('hidden');
 
-            // 依要求1：線上版倒數完進入遊戲之間的空檔時間，按鈕會顯示字樣"分配角色中..."
             window._isDealingRoles = true;
             const startBtn = document.getElementById('btnOnlReadyStart');
             if (startBtn) {
@@ -8008,7 +8078,17 @@ pDiv.innerHTML = `
             await executeOnlineStartDeal(room);
           }
         }, 1000);
+      };
+
+      speak('遊戲即將開始', () => {
+        triggerCountdownLoop();
       });
+      // 語音防卡死看門狗：若語音被瀏覽器阻擋或 1.2 秒內未觸發，自動啟動倒數
+      setTimeout(() => {
+        if (_lobbyCountdownPendingStart && !countdownStarted) {
+          triggerCountdownLoop();
+        }
+      }, 1200);
     }
 
     function stopLobbyCountdown() {
