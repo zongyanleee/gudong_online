@@ -183,12 +183,20 @@
  </div>
  </div>
  <div class="flex items-center space-x-2">
- <button id="btnTasteDrawerOpen" onclick="toggleTasteSettingsDrawer()" class="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold transition flex items-center space-x-1" title="介面美學與音響設定">
- <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
- <span class="hidden sm:inline">雅韻設定</span>
+ <!-- 設定圖示 (Icon-Only Header: Lucide Settings) -->
+ <button id="btnTasteDrawerOpen" onclick="toggleTasteSettingsDrawer()" class="p-2 rounded-lg border border-neutral-700/80 bg-neutral-800/90 hover:bg-neutral-700 text-amber-400 transition active:scale-90 flex items-center justify-center shadow-sm" title="系統與雅韻設定" aria-label="系統設定">
+ <svg class="w-4 h-4 transition-transform duration-300 hover:rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+ <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+ <circle cx="12" cy="12" r="3"></circle>
+ </svg>
  </button>
- <button id="voiceBtn" onclick="toggleVoice()" class="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold transition">
- 🔊 語音: 開
+ <!-- 語音圖示 (Icon-Only Header: Lucide Volume2 / VolumeX) -->
+ <button id="voiceBtn" onclick="toggleVoice()" class="p-2 rounded-lg border border-neutral-700/80 bg-neutral-800/90 hover:bg-neutral-700 text-neutral-200 transition active:scale-90 flex items-center justify-center shadow-sm" title="語音朗讀：開啟 (點擊靜音)" aria-label="語音朗讀開關">
+ <svg class="w-4 h-4 text-emerald-400 transition-transform duration-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+ <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+ <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+ <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+ </svg>
  </button>
  <button onclick="handleHeaderResetClick()" class="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg border border-rose-900 bg-rose-950/50 hover:bg-rose-900 text-rose-300 font-bold transition">
  重新開局
@@ -356,29 +364,16 @@
  </div>
  </section>
 
- <!-- 3. 角色分發與確認 (每人只看自己角色與確認紐) -->
+ <!-- 3. 角色分發與確認 (每人只看自己角色與確認紐，依修改1：線上版已徹底移除角色遮罩) -->
  <section id="onlSecRoleReveal" class="hidden space-y-4">
- <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-xl text-center space-y-4">
+ <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-center shadow-xl space-y-4">
  <div class="text-xs text-neutral-400">系統已完成隨機角色分配，請查閱您的身分</div>
 
- <!-- 專屬防窺角色卡 (帶淡淡立繪浮水印 + 手機端長按2秒防窺解鎖) -->
- <div class="p-6 bg-neutral-950 border border-neutral-800 rounded-2xl relative overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-inner">
- <!-- 防窺長按2秒遮罩 (原生Touch Events + contextmenu攔截) -->
- <div id="onlRolePrivacyCover" class="absolute inset-0 bg-neutral-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300 touch-none-select cursor-pointer select-none">
-   <div class="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mb-2.5 text-2xl relative">
-     <svg class="absolute inset-0 w-full h-full -rotate-90">
-       <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="3" fill="none" class="text-neutral-800" />
-       <circle id="onlTouchRevealCircle" cx="32" cy="32" r="28" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="text-amber-500 transition-all duration-75" />
-     </svg>
-     <span>🔒</span>
-   </div>
-   <div class="text-sm font-black text-amber-400 mb-1">防窺保護鎖定中</div>
-   <div class="text-xs text-neutral-400">請<span class="text-amber-300 font-bold">長按 2 秒</span>解鎖查閱身分</div>
-   <div id="onlTouchHoldProgressText" class="text-[11px] text-amber-400 font-mono mt-2 opacity-0">0%</div>
- </div>
- <div id="onlRoleWatermarkBg" class="role-watermark-overlay" style="opacity: 0.22;"></div>
+ <!-- 專屬角色卡 (直接展示身分，已完全移除防窺遮罩) -->
+ <div class="p-6 bg-neutral-950 border border-neutral-800 rounded-2xl relative overflow-hidden min-h-[200px] flex flex-col items-center justify-center shadow-inner">
+ <div id="onlRoleWatermarkBg" class="role-watermark-overlay" style="opacity: 0.25;"></div>
 
-<div class="relative z-10 space-y-1">
+ <div class="relative z-10 space-y-1">
  <div class="text-xs text-neutral-500">您的專屬角色</div>
  <div id="onlMyRoleName" class="text-4xl sm:text-5xl font-black text-neutral-100 font-serif my-2 tracking-widest">許願</div>
  <div id="onlMyCampBadge" class="inline-block px-3 py-1 rounded-full text-xs font-black bg-blue-950 text-blue-300 border border-blue-700 shadow">
@@ -390,11 +385,11 @@
  每回合需查驗 2 種獸首，無主動技能。
  </div>
 
- <!-- 藥不然與老朝奉同伴相認陣營提示 (比照小幫手，修改4) -->
+ <!-- 藥不然與老朝奉同伴相認陣營提示 -->
  <div id="onlRoleEvilCampBanner" class="hidden relative z-10 w-full mt-3 p-3 bg-neutral-900/90 border border-rose-800/80 rounded-xl text-center shadow-lg"></div>
  </div>
 
- <button id="btnOnlConfirmRole" onclick="confirmMyRoleReady()" class="w-full py-3.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 font-black text-base rounded-xl transition active:scale-[0.99]">
+ <button id="btnOnlConfirmRole" onclick="confirmMyRoleReady()" class="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-neutral-950 font-black text-base rounded-xl shadow-xl transition active:scale-[0.99] cursor-pointer">
  ✓ 我已確認角色，等待開局 (0/8) ➔
  </button>
  </div>
@@ -413,15 +408,7 @@
  </div>
  </div>
 
- <!-- 查驗畫面上方：當局玩家傳手機順序畫面 (修改5: 本回合手機傳遞順序上方要有前幾回合手機傳遞順序) -->
- <div class="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-1.5 mb-1">
- <div id="onlPriorPassOrdersContainer" class="space-y-1.5"></div>
- <div class="text-[10px] text-amber-400 font-bold flex items-center space-x-1.5 pt-0.5">
- <span>📱</span>
- <span id="onlCurRoundPassOrderLabel">本回合手機傳遞順序（閃爍代表正在動作）：</span>
- </div>
- <div id="onlActiveTurnPassOrderRow" class="flex items-center space-x-2 overflow-x-auto py-1 min-h-[38px]"></div>
- </div>
+
 
  <!-- A. 當前是我的回合：單螢幕無滾動緊湊分步導引儀表板 (Stepper Modal / Tab Panel) -->
  <div id="onlActiveTurnControls" class="space-y-2.5">
@@ -515,68 +502,95 @@
  </div>
  </div>
 
- <!-- B. 當前非我行動：四個獸首 + 三局傳遞順序 (白色框框閃爍當前行動者，三局以白色虛線隔開) -->
+ <!-- B. 當前非我行動：傳手機等待階段 (依修改2：顯示座位順序圓圖、各回合發言記錄、各回合獸首投票票型) -->
  <div id="onlWaitingTurnView" class="hidden space-y-4">
- <div>
- <div class="text-xs font-bold text-neutral-300 mb-1.5 flex items-center justify-between">
- <span>本回合四件獸首：</span>
- </div>
- <div id="onlPassiveBeastsGrid" class="grid grid-cols-4 gap-2 text-center"></div>
- </div>
 
- <!-- 手機傳遞順序展示 (三局同時顯示，以白色虛線隔開，當前行動者圓形閃爍白色/黑色框框) -->
- <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-3">
- <div class="flex items-center justify-between">
- <div class="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
- <span>📱</span>
- <span>手機傳遞順序（三回合）</span>
- </div>
- <span class="text-[10px] text-neutral-400">閃爍代表正在動作中</span>
- </div>
+   <!-- 1. 本回合四件獸首 -->
+   <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-md">
+     <div class="text-xs font-bold text-neutral-300 mb-2 flex items-center justify-between border-b border-neutral-800 pb-1.5">
+       <span class="flex items-center space-x-1.5">
+         <span>🦁</span>
+         <span class="text-amber-400 font-bold">本回合四件獸首：</span>
+       </span>
+       <span class="text-[10px] text-neutral-500">依生肖排序</span>
+     </div>
+     <div id="onlPassiveBeastsGrid" class="grid grid-cols-4 gap-2 text-center"></div>
+   </div>
 
- <!-- 第 1 回合傳遞序 -->
- <div class="space-y-1">
- <div class="text-[10px] text-neutral-400 font-bold">第 1 回合傳遞順序：</div>
- <div id="onlPassOrderRow1" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
- </div>
+   <!-- 2. 座位順序圓圖 (修改2：傳手機等待階段可完整檢視圓桌席位與當前行動者高亮) -->
+   <div id="onlWaitingCircleSeatsWrapper" class="p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl text-center space-y-2 shadow-xl">
+     <div class="flex items-center justify-between text-xs font-bold text-neutral-300 border-b border-neutral-800 pb-2">
+       <span class="flex items-center space-x-1.5">
+         <span>🪑</span>
+         <span class="text-amber-400 font-black">座位順序圓圖</span>
+       </span>
+       <span id="onlWaitingSpeakingSeatTip" class="text-[11px] text-amber-400 font-mono">傳遞進行中</span>
+     </div>
 
- <!-- 白色虛線隔開 -->
- <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+     <div class="relative w-[280px] h-[280px] mx-auto my-2 rounded-full border border-neutral-800/80 bg-neutral-950/60 shadow-inner flex items-center justify-center">
+       <div class="text-center space-y-0.5 pointer-events-none select-none">
+         <div class="text-xl font-black text-amber-500/80">局</div>
+         <div class="text-[9px] text-neutral-500">傳遞席次</div>
+       </div>
+       <div id="onlWaitingCircleSeats" class="absolute inset-0 pointer-events-auto"></div>
+     </div>
+     <div class="text-[10px] text-neutral-400">
+       ※ 金圈閃爍代表正在查驗操作中，綠勾代表本回合已查驗。
+     </div>
+   </div>
 
- <!-- 第 2 回合傳遞序 -->
- <div class="space-y-1">
- <div class="text-[10px] text-neutral-400 font-bold">第 2 回合傳遞順序：</div>
- <div id="onlPassOrderRow2" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
- </div>
+   <!-- 3. 手機傳遞順序展示 (三局同時顯示，以白色虛線隔開) -->
+   <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-3 shadow-md">
+     <div class="flex items-center justify-between">
+       <div class="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
+         <span>📱</span>
+         <span>手機傳遞順序（三回合）</span>
+       </div>
+       <span class="text-[10px] text-neutral-400">閃爍代表正在動作中</span>
+     </div>
 
- <!-- 白色虛線隔開 -->
- <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+     <!-- 第 1 回合傳遞序 -->
+     <div class="space-y-1">
+       <div class="text-[10px] text-neutral-400 font-bold">第 1 回合傳遞順序：</div>
+       <div id="onlPassOrderRow1" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
+     </div>
 
- <!-- 第 3 回合傳遞序 -->
- <div class="space-y-1">
- <div class="text-[10px] text-neutral-400 font-bold">第 3 回合傳遞順序：</div>
- <div id="onlPassOrderRow3" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
- </div>
- </div>
- </div>
+     <!-- 白色虛線隔開 -->
+     <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+
+     <!-- 第 2 回合傳遞序 -->
+     <div class="space-y-1">
+       <div class="text-[10px] text-neutral-400 font-bold">第 2 回合傳遞順序：</div>
+       <div id="onlPassOrderRow2" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
+     </div>
+
+     <!-- 白色虛線隔開 -->
+     <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+
+     <!-- 第 3 回合傳遞序 -->
+     <div class="space-y-1">
+       <div class="text-[10px] text-neutral-400 font-bold">第 3 回合傳遞順序：</div>
+       <div id="onlPassOrderRow3" class="flex items-center space-x-2 overflow-x-auto py-1.5 min-h-[44px]"></div>
+     </div>
+   </div>
+
+   <!-- 4. 各回合發言記錄 (修改2：傳手機等待階段可查看歷史各回合發言內容) -->
+   <div class="p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl space-y-2.5 shadow-xl text-left">
+     <div class="flex items-center justify-between text-xs font-bold text-neutral-300 border-b border-neutral-800 pb-2">
+       <span class="flex items-center space-x-1.5">
+         <span>🗣️</span>
+         <span class="text-amber-400 font-black">各回合發言記錄</span>
+       </span>
+       <span class="text-[10px] text-neutral-400">歷史發言</span>
+     </div>
+     <div id="onlWaitingSpeechesContainer" class="space-y-2.5 max-h-72 overflow-y-auto pr-1"></div>
+   </div>
+
+
 
  </div>
  
- <!-- 依要求1：第2、3回合玩家操作時，在查看歷史戰績與勝率排行榜按鈕上方顯示前幾回合獸首投票票型與手機傳遞順序 -->
- <div id="onlTurnPriorHistorySection" class="hidden bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-3 text-left">
- <div class="text-xs font-bold text-neutral-300 flex items-center justify-between border-b border-neutral-800 pb-2">
- <span class="flex items-center space-x-1.5">
- <span>🗳️</span>
- <span>各回合獸首投票票型（點擊獸首看攤開明細）：</span>
- </span>
- <span class="text-[10px] text-amber-400">前幾回合投票結果</span>
- </div>
- <div id="onlTurnPriorBeastsChipsContainer" class="space-y-2.5"></div>
 
- <div class="border-t-2 border-dashed border-white/60 my-2"></div>
- <div class="text-xs font-bold text-neutral-300">手機傳遞順序（三回合）：</div>
- <div id="onlTurnPriorPassOrderContainer" class="space-y-2"></div>
- </div>
 </section>
 
  <!-- 5. 發言畫面 -->
@@ -592,6 +606,8 @@
  </h2>
  <span id="onlCurrentSpeakerBadge" class="text-xs font-bold text-neutral-200">發言中：...</span>
  </div>
+
+
 
  <!-- 若輪到我發言：輸入框與發言完畢按鈕 -->
  <div id="onlMySpeechInputBox" class="hidden p-3 bg-neutral-950 border-2 border-amber-500/80 rounded-xl space-y-2 shadow-lg">
@@ -909,35 +925,58 @@
  <!-- ================= 階段 2：確認角色 ================= -->
  <section id="secRoleReveal" class="hidden space-y-4">
  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-center shadow-xl">
- <div class="text-xs text-neutral-400 mb-1">請將裝置交給以下玩家</div>
- <div class="flex items-center justify-center space-x-2 my-2">
- <span id="revealColorBadge" class="w-4 h-4 rounded-full border border-neutral-600 inline-block"></span>
- <h2 id="revealPlayerName" class="text-3xl font-black text-neutral-100">玩家 1</h2>
- </div>
- <p class="text-xs text-neutral-400 mb-4">確認周遭無人窺探後，點擊下方卡片查閱自己的角色。</p>
-
- <div onclick="toggleRoleCardMask()" class="bg-neutral-950 border border-neutral-800 rounded-xl p-6 my-3 cursor-pointer min-h-[180px] flex flex-col items-center justify-center relative shadow-inner hover:border-neutral-700 transition overflow-hidden">
- <div id="roleCardCover" class="absolute inset-0 bg-neutral-950/95 flex flex-col items-center justify-center z-20">
- <div class="text-2xl mb-1">🔒</div>
- <div class="text-sm font-black text-amber-400">點擊翻開查看角色名字</div>
- <div class="text-[10px] text-neutral-500 mt-1">（點擊翻開後不可再遮蔽，確認後按下方換人）</div>
- </div>
-
- <!-- 角色立繪淡淡浮水印背景 (翻開後以 20% 透明度浮現) -->
- <div id="roleCardWatermarkBg" class="absolute inset-0 bg-center bg-no-repeat bg-contain pointer-events-none transition-all duration-500 z-0 opacity-0"></div>
-
- <div id="roleCardText" class="mask-blur relative z-10 flex flex-col items-center justify-center">
- <div class="text-xs text-neutral-500 mb-1">你的角色名字</div>
- <div id="roleCharName" class="text-4xl font-black tracking-widest text-neutral-300 my-3">許願</div>
- <div class="text-[10px] text-neutral-500">（請記住角色名稱，後續將根據此角色執行專屬能力）</div>
- </div>
+ <!-- 1. 角色傳遞交接畫面 (依修改1：換人傳遞時展示，點擊後絕不會看到下家角色，必須由下家本人點擊確認進入才顯示身分卡) -->
+ <div id="roleHandoverWrapper" class="space-y-4 text-center py-4">
+   <div class="text-xs text-neutral-400">請將手機/裝置交給下一位玩家</div>
+   <div class="my-4 p-6 bg-neutral-950 border border-neutral-800 rounded-2xl w-full space-y-3 shadow-inner">
+     <div class="text-xs text-neutral-500">角色確認交接提示</div>
+     <div class="flex items-center justify-center space-x-2">
+       <span id="roleHandoverColorBadge" class="w-4 h-4 rounded-full border border-neutral-600 inline-block"></span>
+       <h2 id="roleHandoverPlayerName" class="text-3xl font-black text-amber-400">玩家 1</h2>
+     </div>
+     <p class="text-xs text-neutral-400 leading-relaxed">
+       請 <span id="roleHandoverPlayerTag" class="text-amber-400 font-bold">【黑色 玩家 1】</span> 接過手機，確認周遭無人窺探後點擊下方按鈕。
+     </p>
+   </div>
+   <div class="text-xs text-neutral-500 mb-2" id="roleHandoverProgressText">進度：1 / 7 位玩家</div>
+   <button id="btnRoleHandoverReady" onclick="enterRoleRevealCardView()" class="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-neutral-950 font-black text-base rounded-xl shadow-xl transition cursor-pointer active:scale-[0.99]">
+     我是【黑色 玩家 1】，準備查閱角色 ➔
+   </button>
  </div>
 
- <div class="text-xs text-neutral-500 mb-4" id="revealProgressText">進度：1 / 7 位玩家</div>
+ <!-- 2. 角色身分卡查閱畫面 (本人親自點擊確認後才顯示，具備防窺遮罩與點擊開關) -->
+ <div id="roleCardMainWrapper" class="hidden space-y-4">
+   <div class="text-xs text-neutral-400 mb-1">請查閱您的角色身分</div>
+   <div class="flex items-center justify-center space-x-2 my-2">
+     <span id="revealColorBadge" class="w-4 h-4 rounded-full border border-neutral-600 inline-block"></span>
+     <h2 id="revealPlayerName" class="text-3xl font-black text-neutral-100">玩家 1</h2>
+   </div>
+   <p class="text-xs text-neutral-400 mb-4">確認周遭無人窺探後，點擊下方卡片查閱自己的角色。</p>
 
- <button onclick="nextRoleReveal()" id="roleConfirmBtn" disabled class="w-full py-3.5 bg-neutral-900 text-neutral-600 font-black text-base rounded-xl border border-neutral-800 transition cursor-not-allowed opacity-50">
- 我已確認角色，換下一位玩家 ➔
- </button>
+   <div onclick="toggleRoleCardMask()" class="bg-neutral-950 border border-neutral-800 rounded-xl p-6 my-3 min-h-[190px] flex flex-col items-center justify-center relative shadow-inner hover:border-neutral-700 transition overflow-hidden select-none cursor-pointer">
+     <!-- 小幫手面殺角色遮罩 (依修改1：按一下即開啟，再按一下即關閉) -->
+     <div id="roleCardCover" class="absolute inset-0 bg-neutral-950/95 flex flex-col items-center justify-center z-20 transition-all duration-200 cursor-pointer">
+       <div class="text-3xl mb-1.5">🔒</div>
+       <div class="text-sm font-black text-amber-400">點擊查看角色身分</div>
+       <div class="text-[10px] text-neutral-400 mt-1">（按一下開啟，再按一下即關閉遮蔽）</div>
+     </div>
+
+     <!-- 角色立繪淡淡浮水印背景 (翻開後以 20% 透明度浮現) -->
+     <div id="roleCardWatermarkBg" class="absolute inset-0 bg-center bg-no-repeat bg-contain pointer-events-none transition-all duration-500 z-0 opacity-0"></div>
+
+     <div id="roleCardText" class="mask-blur relative z-10 flex flex-col items-center justify-center pointer-events-none">
+       <div class="text-xs text-neutral-500 mb-1">你的角色名字</div>
+       <div id="roleCharName" class="text-4xl font-black tracking-widest text-neutral-300 my-3 font-serif">???</div>
+       <div class="text-[10px] text-neutral-500">（點擊卡片可再次遮蔽，確認後按下方換人）</div>
+     </div>
+   </div>
+
+   <div class="text-xs text-neutral-500 mb-4" id="revealProgressText">進度：1 / 7 位玩家</div>
+
+   <button onclick="nextRoleReveal()" id="roleConfirmBtn" disabled class="w-full py-3.5 bg-neutral-900 text-neutral-600 font-black text-base rounded-xl border border-neutral-800 transition cursor-not-allowed opacity-50 relative z-30">
+     我已確認角色，換下一位玩家 ➔
+   </button>
+ </div>
  </div>
  </section>
 
@@ -1141,7 +1180,9 @@
  </div>
  </section>
 
- </main>
+ 
+
+</main>
 
  <!-- ================= 頁面底部資訊與戰績榜 (包含版本1.1.1與免責聲明) ================= -->
  <footer class="w-full max-w-md mx-auto px-4 pt-6 pb-24 text-center space-y-3">
@@ -3175,48 +3216,40 @@ service cloud.firestore {
         // 當所有人均按下按鈕後，實作安全狀態機 (State Machine) 重置過渡邏輯：
         // 階段 1：先將 status/gameState 設為 'resetting'，鎖定 UI 並暫停舊資料處理，防範 Null 錯誤
         if (readyCount >= totalCount && totalCount > 0) {
+          // 需求1：重置協議原子化 (Atomic Room Reset)
+          // 同步將全體玩家的 isReady / readyToStart、hasConfirmedRole / roleConfirmed、actionState 重設為初始狀態
+          const updatedPlayers = players.map(p => ({
+            ...p,
+            readyToStart: false,
+            isReady: false,
+            role: '',
+            roleConfirmed: false,
+            hasConfirmedRole: false,
+            actionState: null,
+            isAmbushed: false,
+            isPermanentlyAmbushed: false,
+            inspectHistory: [],
+            abilityHistory: [],
+            confusedRound: null
+          }));
+
           transaction.update(docRef, {
-            status: 'resetting',
-            gameState: 'resetting',
-            resettingMessage: '對局安全重設中，保留席次與連線...',
+            status: 'waiting',
+            gameState: 'ready',
+            players: updatedPlayers,
+            rounds: [],
+            currentRoundIdx: 0,
+            currentTurnPlayerId: null,
+            currentSpeakerId: null,
+            lastCalculatedResult: null,
+            gameOverData: null,
+            gameOverRestartVotes: {},
+            restartVoteData: null,
+            closeVoteData: null,
+            waitingSince: Date.now(),
+            startTimestamp: null,
             lastActivityTime: Date.now()
           });
-
-          // 階段 2：安全清除遊戲歷程後，將狀態切換回 ready / waiting
-          setTimeout(async () => {
-            try {
-              const updatedPlayers = players.map(p => ({
-                ...p,
-                readyToStart: false,
-                role: '',
-                roleConfirmed: false,
-                isAmbushed: false,
-                isPermanentlyAmbushed: false,
-                inspectHistory: [],
-                abilityHistory: [],
-                confusedRound: null
-              }));
-
-              await docRef.update({
-                status: 'waiting',
-                gameState: 'ready',
-                players: updatedPlayers,
-                rounds: [],
-                currentRoundIdx: 0,
-                currentTurnPlayerId: null,
-                currentSpeakerId: null,
-                lastCalculatedResult: null,
-                gameOverData: null,
-                gameOverRestartVotes: {},
-                restartVoteData: null,
-                closeVoteData: null,
-                waitingSince: Date.now(),
-                lastActivityTime: Date.now()
-              });
-            } catch(err) {
-              console.error('狀態機切換至 ready 失敗:', err);
-            }
-          }, 350);
         } else {
           transaction.update(docRef, {
             gameOverRestartVotes: votes,
@@ -3418,6 +3451,16 @@ service cloud.firestore {
   window.forceTimeoutResetOnlineGame = forceTimeoutResetOnlineGame;
 
   function resetAllOnlineClientState() {
+ window._isDealingRoles = false;
+ _lobbyCountdownPendingStart = false;
+ if (_lobbyCountdownTimer) {
+   clearInterval(_lobbyCountdownTimer);
+   _lobbyCountdownTimer = null;
+ }
+ const countdownBox = document.getElementById('onlLobbyCountdownBox');
+ if (countdownBox) countdownBox.classList.add('hidden');
+ window._currentGameOverRenderedId = null;
+ window._isViewingGameOver = false;
  onlMyInspectedBeastsInTurn = [];
  onlSelectedInspectBeast = null;
  onlSelectedPassNextId = null;
@@ -3652,8 +3695,19 @@ service cloud.firestore {
     }
 
     // 依 room.status 派發視圖
- if (room.status === 'waiting' || room.gameState === 'ready') {
+ if (room.status === 'waiting' || room.status === 'WAITING_READY' || room.gameState === 'ready') {
+ // 需求1：客戶端反應式監聽重置 (Reactive Listener & Local State Purge)
+ // 偵測到 status 轉為初始化，自動清空組件內部快取與鎖定，無須手動按 F5 即可重新掛載就緒視圖
+ window._isDealingRoles = false;
+ _lobbyCountdownPendingStart = false;
+ if (_lobbyCountdownTimer) {
+   clearInterval(_lobbyCountdownTimer);
+   _lobbyCountdownTimer = null;
+ }
+ const cBox = document.getElementById('onlLobbyCountdownBox');
+ if (cBox) cBox.classList.add('hidden');
  window._currentGameOverRenderedId = null;
+ window._isViewingGameOver = false;
  showOnlineSubView('onlSecLobby');
  renderOnlineLobby(room, me);
  } else if (room.status === 'roles') {
@@ -3670,6 +3724,10 @@ service cloud.firestore {
  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
  }
  } else if (room.status === 'discussion' || room.status === 'voting') {
+ // 需求 1：發言階段若輪到虛擬玩家，房主客戶端立即驅動打字發言，避免卡在虛擬角色
+ if (room.status === 'discussion' && room.currentSpeakerId && room.currentSpeakerId.startsWith('mock_p_')) {
+   triggerMockPlayerSpeech(room, room.currentSpeakerId);
+ }
  // 依要求7：若輪到該玩家發言，頁面自動移到最上方
  if (room.status === 'discussion' && room.currentSpeakerId === myOnlinePlayerId && window._lastScrolledSpeechId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {
  window._lastScrolledSpeechId = myOnlinePlayerId + '_' + room.currentRoundIdx;
@@ -3938,6 +3996,11 @@ service cloud.firestore {
       const isMyReady = me ? me.readyToStart : false;
 
       if (startSec) startSec.classList.remove('hidden');
+
+      // 防呆安全校正：若尚未全員就緒 (例如剛重新開局 0/8)，絕不可能處於發牌階段，強制重設 _isDealingRoles 為 false
+      if (window._isDealingRoles && (!isAllReady || readyCount < 8 || players.length < 8)) {
+        window._isDealingRoles = false;
+      }
 
       if (startBtn) {
         if (window._isDealingRoles) {
@@ -4263,10 +4326,165 @@ service cloud.firestore {
         });
       } catch(e) {
         console.error('開局交易失敗:', e);
+      } finally {
+        // 發牌交易完成或失敗時，立即解鎖，防範卡死
+        window._isDealingRoles = false;
       }
     }
     window.executeOnlineStartDeal = executeOnlineStartDeal;
     window.forceStartOnlineGame = executeOnlineStartDeal;
+
+
+  // =========================================================================
+  // 需求 2：角色防窺確認機制組件 (RoleRevealCard: Feature Flagging & Optimization)
+  // 小幫手實體面殺 (isOfflineMode=true)：長按 1000ms 揭示，放開手指立即重新覆蓋防窺遮罩！
+  // 線上多人即時版 (isOfflineMode=false)：每人使用個人裝置，完全移除長按防窺鎖定機制，卡片直接展示！
+  // =========================================================================
+  function RoleRevealCard({ isOfflineMode = false, holdDurationMs = 1000, containerId, player, onConfirm } = {}) {
+    if (!player) return;
+
+    if (!isOfflineMode) {
+      // --- 線上多人即時版 (Online Realtime) ---
+      // 完全移除長按防窺鎖定機制，卡片直接正面展示
+      const cover = document.getElementById('onlRolePrivacyCover');
+      if (cover) {
+        cover.classList.add('hidden', 'pointer-events-none');
+      }
+      const roleNameEl = document.getElementById('onlMyRoleName');
+      if (roleNameEl) roleNameEl.innerText = player.role || '???';
+      const wmBg = document.getElementById('onlRoleWatermarkBg');
+      if (wmBg && player.role) {
+        const bgUrl = getRoleWatermarkUrl(player.role);
+        if (bgUrl) wmBg.style.backgroundImage = `url('${bgUrl}')`;
+        wmBg.style.opacity = '0.25';
+      }
+      const confirmBtn = document.getElementById('btnOnlConfirmRole');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.className = "w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-neutral-950 font-black text-sm rounded-xl shadow-lg transition active:scale-[0.99] cursor-pointer";
+      }
+    } else {
+      // --- 小幫手版 (Pass-and-Play / 傳手機面殺) ---
+      // 需求 1：
+      // 1. 長按觸發：玩家按下持續達 1 秒 (1000ms) 後，身分卡片確實揭示顯示。
+      // 2. 延遲恢復：玩家鬆開手指後，防窺遮罩延遲 0.5 秒 (500ms) 才重新覆蓋，給予玩家足夠時間收看資訊。
+      // 3. 按鍵防阻斷：未揭示或淡出時加上 pointer-events: none，嚴禁阻擋下方按鈕；touchend 絕不隨意呼叫 preventDefault()；解耦按鈕 disabled 狀態。
+      const cover = document.getElementById('roleCardCover');
+      const text = document.getElementById('roleCardText');
+      const charNameEl = document.getElementById('roleCharName');
+      const progCircle = document.getElementById('localTouchRevealCircle');
+      const progText = document.getElementById('localTouchHoldProgressText');
+      const wmBg = document.getElementById('roleCardWatermarkBg');
+      const confirmBtn = document.getElementById('roleConfirmBtn');
+
+      if (!cover) return;
+
+      cover.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
+
+      let touchStartTime = 0;
+      let holdTimer = null;
+      let remaskTimer = null;
+      let hasRevealedOnce = false;
+      const DURATION = holdDurationMs || 1000;
+
+      function startHold(e) {
+        if (remaskTimer) {
+          clearTimeout(remaskTimer);
+          remaskTimer = null;
+        }
+
+        // 僅阻斷卡片上的 touchstart 滾動與長按上下文選單，絕不在 touchend 或全域調用 preventDefault
+        if (e && e.type === 'touchstart' && e.cancelable) {
+          e.preventDefault();
+        }
+
+        touchStartTime = Date.now();
+        if (progText) progText.classList.remove('opacity-0');
+
+        if (holdTimer) clearInterval(holdTimer);
+        holdTimer = setInterval(() => {
+          const elapsed = Date.now() - touchStartTime;
+          const pct = Math.min(100, Math.floor((elapsed / DURATION) * 100));
+          const offset = 175.9 - (175.9 * pct / 100);
+          if (progCircle) progCircle.style.strokeDashoffset = offset;
+          if (progText) progText.innerText = `${pct}%`;
+
+          // 1. 長按持續達 1 秒 (1000ms) 後，身分卡片確實揭示顯示
+          if (elapsed >= DURATION) {
+            clearInterval(holdTimer);
+            holdTimer = null;
+            hasRevealedOnce = true;
+            try { if (navigator.vibrate) navigator.vibrate(50); } catch(err) {}
+
+            if (charNameEl) charNameEl.innerText = player.role || '???';
+            // 揭示時加上 pointer-events: none，嚴禁因 z-index 過高而隱形阻擋下方按鈕點擊
+            if (cover) {
+              cover.classList.add('opacity-0', 'pointer-events-none');
+              cover.style.pointerEvents = 'none';
+            }
+            if (text) text.classList.add('unmasked');
+            if (wmBg && player.role) {
+              const bgUrl = getRoleWatermarkUrl(player.role);
+              if (bgUrl) {
+                wmBg.style.backgroundImage = `url('${bgUrl}')`;
+                wmBg.classList.remove('opacity-0');
+                wmBg.classList.add('opacity-25');
+              }
+            }
+
+            // 清除計時器時確保狀態解耦，按鍵一旦解鎖後永久可用
+            if (confirmBtn) {
+              confirmBtn.disabled = false;
+              confirmBtn.className = "w-full py-3.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base rounded-xl border border-neutral-700 transition cursor-pointer relative z-30 shadow-lg";
+            }
+            showToast('🔓 角色身分已解鎖 (鬆開 0.5 秒後重新防窺遮蔽)', 'info', 1800);
+          }
+        }, 25);
+      }
+
+      function cancelHold(e) {
+        if (holdTimer) {
+          clearInterval(holdTimer);
+          holdTimer = null;
+        }
+        if (progCircle) progCircle.style.strokeDashoffset = 175.9;
+        if (progText) {
+          progText.innerText = '0%';
+          progText.classList.add('opacity-0');
+        }
+
+        // 嚴禁在此處呼叫 e.preventDefault()，避免瀏覽器將原生點擊事件 (Synthesized Click) 吞噬！
+
+        if (hasRevealedOnce) {
+          // 2. 延遲恢復：玩家鬆開手指後，防窺遮罩延遲 0.5 秒 (500ms) 才重新覆蓋
+          if (remaskTimer) clearTimeout(remaskTimer);
+          remaskTimer = setTimeout(() => {
+            if (cover) {
+              cover.classList.remove('opacity-0', 'pointer-events-none');
+              cover.style.pointerEvents = 'auto';
+            }
+            if (text) text.classList.remove('unmasked');
+            // 注意：confirmBtn 仍維持解鎖 (disabled=false)，絕不重新禁用！
+          }, 500);
+        } else {
+          if (cover) {
+            cover.classList.remove('opacity-0', 'pointer-events-none');
+            cover.style.pointerEvents = 'auto';
+          }
+          if (text) text.classList.remove('unmasked');
+        }
+      }
+
+      // 事件綁定：限定在卡片 cover 上，嚴格避免全域事件阻斷
+      cover.onmousedown = startHold;
+      cover.onmouseup = cancelHold;
+      cover.onmouseleave = cancelHold;
+      cover.addEventListener('touchstart', startHold, { passive: false });
+      cover.addEventListener('touchend', cancelHold, { passive: true });
+      cover.addEventListener('touchcancel', cancelHold, { passive: true });
+    }
+  }
+  window.RoleRevealCard = RoleRevealCard;
 
     // 角色確認視圖
  function renderOnlineRoleReveal(room, me) {
@@ -4277,7 +4495,8 @@ service cloud.firestore {
    }
  }
  if (!me) return;
- initTouchRevealCard();
+ // 需求2：線上多人版完全移除長按防窺鎖定機制，卡片直接展示！
+ RoleRevealCard({ isOfflineMode: false, player: me });
  if (!me.role) {
    const ALL_8_ROLES = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'];
    const used = new Set((room.players || []).map(p => p.role).filter(Boolean));
@@ -4325,9 +4544,13 @@ service cloud.firestore {
  const players = room.players || [];
  const confirmedCount = players.filter(p => p.roleConfirmed).length;
 
+ confirmBtn.disabled = false;
+ confirmBtn.className = me.roleConfirmed
+   ? "w-full py-4 bg-emerald-600 text-neutral-950 font-black text-base rounded-xl shadow-lg transition cursor-default"
+   : "w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-neutral-950 font-black text-base rounded-xl shadow-xl transition active:scale-[0.99] cursor-pointer";
  confirmBtn.innerHTML = me.roleConfirmed
- ? `✓ 您已確認角色・等待全員開局 (${confirmedCount}/8)`
- : `✓ 我已確認角色，等待開局 (${confirmedCount}/8) ➔`;
+   ? `✓ 您已確認角色・等待全員開局 (${confirmedCount}/8)`
+   : `✓ 我已確認角色，等待開局 (${confirmedCount}/8) ➔`;
 
  // 若全員 8 人皆確認，自動推進至正式查驗階段
  if (confirmedCount === 8 && room.status === 'roles') {
@@ -4443,8 +4666,239 @@ service cloud.firestore {
  }
 
  // 修改1: 補齊非當前行動者的等待視圖渲染
+
+  // =========================================================================
+  // 修改 2：傳手機等待階段專屬渲染器 (圓形座位圖、各回合發言記錄、各回合獸首投票票型)
+  // =========================================================================
+  function renderWaitingTurnCircleSeats(room, me, curRound) {
+    const container = document.getElementById('onlWaitingCircleSeats');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const players = room.players || [];
+    const mySeatIndex = me ? me.seatIndex : 0;
+    const R = 105;
+    const centerX = 140;
+    const centerY = 140;
+    const currentTurnPlayerId = room.currentTurnPlayerId;
+    const passOrder = (curRound && curRound.passOrder) ? curRound.passOrder : [];
+
+    const actingPlayer = players.find(p => p.id === currentTurnPlayerId);
+    const tipEl = document.getElementById('onlWaitingSpeakingSeatTip');
+    if (tipEl) {
+      if (actingPlayer) {
+        const pc = COLOR_PALETTE.find(c => c.id === actingPlayer.colorId) || COLOR_PALETTE[0];
+        tipEl.innerHTML = `當前：<span class="${pc.bgClass} px-1 rounded text-[9px] font-black mr-0.5">${pc.name}色</span>${actingPlayer.name} 行動中`;
+      } else {
+        tipEl.innerText = '等待行動中';
+      }
+    }
+
+    for (let sIdx = 0; sIdx < 8; sIdx++) {
+      const delta = (sIdx - mySeatIndex + 8) % 8;
+      const angle = (Math.PI / 2) + delta * (Math.PI / 4);
+      const x = centerX + R * Math.cos(angle);
+      const y = centerY + R * Math.sin(angle);
+
+      const occupant = players.find(p => p.seatIndex === sIdx);
+      const node = document.createElement('div');
+      node.className = 'absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300';
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+
+      if (occupant) {
+        const pc = COLOR_PALETTE.find(c => c.id === occupant.colorId) || COLOR_PALETTE[0];
+        const isMe = occupant.id === myOnlinePlayerId;
+        const isActing = (occupant.id === currentTurnPlayerId && room.status === 'playing');
+        const hasPassed = passOrder.includes(occupant.id);
+
+        let borderClass = 'border-neutral-700';
+        let ringClass = '';
+        if (isActing) {
+          borderClass = 'border-amber-400 ring-4 ring-amber-400 animate-pulse scale-110 shadow-2xl';
+        } else if (hasPassed) {
+          borderClass = 'border-emerald-500/80';
+        } else if (isMe) {
+          borderClass = 'border-amber-500/70';
+        }
+
+        node.innerHTML = `
+          <div class="relative">
+            <div style="background-color: ${pc.hex}; color: ${(pc.id === 'yellow' || pc.id === 'white' || pc.id === 'green') ? '#0a0a0a' : '#ffffff'};" class="w-10 h-10 rounded-full ${pc.bgClass} border-2 ${borderClass} ${ringClass} flex items-center justify-center text-base font-black select-none shadow">
+              ${occupant.repChar || getRepresentativeChar(occupant.name)}
+            </div>
+            ${isActing ? '<span class="absolute -top-1.5 -right-1.5 px-1 py-0.2 rounded bg-amber-500 text-neutral-950 font-black text-[8px] shadow animate-bounce">行動中</span>' : (hasPassed ? '<span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 text-neutral-950 font-black text-[8px] flex items-center justify-center shadow">✓</span>' : '')}
+          </div>
+          <div class="text-[9px] font-bold text-neutral-200 mt-0.5 max-w-[64px] truncate text-center flex items-center justify-center space-x-0.5 ${isActing ? 'text-amber-300 font-black' : (isMe ? 'text-amber-400' : '')}">
+            <span class="${pc.bgClass} px-1 rounded text-[8px] font-black mr-0.5">${pc.name}</span>
+            <span class="truncate">${occupant.name}</span>
+          </div>
+        `;
+      } else {
+        node.innerHTML = `
+          <div class="w-10 h-10 rounded-full border-2 border-dashed border-neutral-700 flex items-center justify-center text-[10px] text-neutral-600 font-mono">
+            空
+          </div>
+        `;
+      }
+      container.appendChild(node);
+    }
+  }
+  window.renderWaitingTurnCircleSeats = renderWaitingTurnCircleSeats;
+
+  function renderWaitingTurnSpeeches(room, me, curRound) {
+    const container = document.getElementById('onlWaitingSpeechesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const rounds = room.rounds || [];
+    let hasAnySpeech = false;
+
+    rounds.forEach(r => {
+      const speeches = r.speeches || [];
+      if (speeches.length === 0) return;
+      hasAnySpeech = true;
+
+      const roundCard = document.createElement('div');
+      roundCard.className = 'p-2.5 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2';
+
+      let speechesListHtml = '';
+      speeches.forEach(sp => {
+        const spPlayer = (room.players || []).find(p => p.id === sp.playerId || p.id === sp.speakerId);
+        const pc = spPlayer ? (COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];
+        const name = sp.speakerName || (spPlayer ? spPlayer.name : '玩家');
+        const isMe = (sp.playerId === myOnlinePlayerId || sp.speakerId === myOnlinePlayerId);
+
+        speechesListHtml += `
+          <div class="flex items-start space-x-2 py-1 border-b border-neutral-800/50 last:border-0">
+            <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-[10px] flex-shrink-0 mt-0.5" title="${name}">
+              ${getRepresentativeChar(name)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-[11px] font-bold text-neutral-300">${name}</span>
+                <span class="text-[9px] ${pc.bgClass} px-1 rounded text-neutral-950 font-black">${pc.name}色</span>
+                ${isMe ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded">我</span>' : ''}
+                ${sp.time ? `<span class="text-[9px] text-neutral-500 font-mono ml-auto">${sp.time}</span>` : ''}
+              </div>
+              <div class="text-xs text-neutral-200 mt-0.5 leading-relaxed bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80 break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text" style="overflow-wrap: anywhere; word-break: break-word;">
+                ${sp.text}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      roundCard.innerHTML = `
+        <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
+          <span class="font-bold text-amber-400">📜 第 ${r.roundNum} 回合發言紀錄 (${speeches.length} 則)：</span>
+        </div>
+        <div class="space-y-1 max-h-56 overflow-y-auto pr-1">${speechesListHtml}</div>
+      `;
+      container.appendChild(roundCard);
+    });
+
+    if (!hasAnySpeech) {
+      container.innerHTML = '<div class="text-[11px] text-neutral-500 py-3 text-center font-mono">（發言階段尚未開始，目前為第 1 回合手機傳遞查驗中）</div>';
+    }
+  }
+  window.renderWaitingTurnSpeeches = renderWaitingTurnSpeeches;
+
+  function renderWaitingTurnBeastsChips(room, me, curRound) {
+    const container = document.getElementById('onlWaitingBeastsChipsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const rounds = room.rounds || [];
+    let hasAnyResults = false;
+
+    rounds.forEach(r => {
+      if (!r.voteResults) return;
+      hasAnyResults = true;
+      const res = r.voteResults;
+      const roundBox = document.createElement('div');
+      roundBox.className = 'p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2.5';
+
+      const top2Names = new Set([
+        res.rank1 ? res.rank1.name : null,
+        res.rank2 ? res.rank2.name : null
+      ].filter(Boolean));
+
+      let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';
+      const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
+      sortedChipsBeasts.forEach(b => {
+        const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
+        const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];
+
+        let chipsRectHtml = '';
+        chips.forEach(ch => {
+          const isBlack = (ch.colorId === 'black' || ch.bgClass.includes('bg-black'));
+          const borderStyle = isBlack ? 'border border-dotted border-white shadow-xs bg-black' : `border border-black/80 shadow-xs ${ch.bgClass}`;
+          chipsRectHtml += `<span class="w-3.5 h-2 sm:w-4 sm:h-2.5 rounded-xs inline-block flex-shrink-0 ${borderStyle}" title="${ch.voterName}"></span>`;
+        });
+
+        const isTop2 = top2Names.has(b.name);
+        const beastCardBorder = isTop2 
+          ? 'border-2 border-amber-400 ring-1 ring-amber-400 shadow-md shadow-amber-950/40 bg-amber-950/20' 
+          : 'border border-neutral-800 bg-neutral-950';
+
+        let truthBadge = '';
+        if (res.rank2 && res.rank2.name === b.name) {
+          truthBadge = `<span class="text-[10px] font-black ${res.rank2.isReal ? 'text-emerald-300 bg-emerald-950/90 border border-emerald-600/70' : 'text-rose-300 bg-rose-950/90 border border-rose-600/70'} px-1.5 py-0.5 rounded mt-1 shadow-sm">🥈${res.rank2.isReal ? '【真品】' : '【贗品】'}</span>`;
+        } else if (res.rank1 && res.rank1.name === b.name) {
+          truthBadge = '<span class="text-[10px] font-bold text-amber-400 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.5 rounded mt-1">🥇秘密封存</span>';
+        }
+
+        beastsGridHtml += `
+          <div onclick="openOnlChipBallotModal(${r.roundNum}, '${b.name}')" class="p-2 rounded-xl ${beastCardBorder} hover:border-amber-400 transition cursor-pointer flex flex-col items-center justify-between min-h-[96px] shadow-sm" title="點擊檢視【${b.name}】票型">
+            <span class="text-xl font-black text-amber-300 font-mono">${b.name}</span>
+            <div class="flex items-center justify-center flex-wrap gap-1 my-1 min-h-[12px] max-w-full">
+              ${chipsRectHtml || '<span class="text-[9px] text-neutral-600 font-mono">0票</span>'}
+            </div>
+            <span class="text-[10px] text-neutral-400 font-mono font-bold">${totalVotes} 票</span>
+            ${truthBadge}
+          </div>
+        `;
+      });
+      beastsGridHtml += '</div>';
+
+      const r1Name = res.rank1 ? res.rank1.name : '';
+      const r2Name = res.rank2 ? res.rank2.name : '';
+      const r2Real = res.rank2 ? res.rank2.isReal : false;
+
+      roundBox.innerHTML = `
+        <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
+          <span class="font-bold text-amber-400">第 ${r.roundNum} 回合投票結果：</span>
+          <span class="text-[10px] text-neutral-400">點擊獸首看籌碼明細</span>
+        </div>
+        ${beastsGridHtml}
+        <div class="p-2 bg-neutral-950 border border-neutral-800 rounded-lg flex justify-between items-center text-xs mt-1">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-amber-400 font-bold">🥇 第 1 名：${r1Name}</span>
+            <span class="text-[10px] text-neutral-400">（秘密封存）</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <span class="text-neutral-200 font-bold">🥈 第 2 名：${r2Name}</span>
+            <span class="font-black text-sm ${r2Real ? 'text-emerald-400' : 'text-rose-400'}">${r2Real ? '【真品】' : '【贗品】'}</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(roundBox);
+    });
+
+    if (!hasAnyResults) {
+      container.innerHTML = '<div class="text-[11px] text-neutral-500 py-3 text-center font-mono">（本局尚未進行鑑寶投票，投票將於全員發言完畢後進行）</div>';
+    }
+  }
+  window.renderWaitingTurnBeastsChips = renderWaitingTurnBeastsChips;
+
  function renderOnlineWaitingTurn(room, me, curRound) {
- const pGrid = document.getElementById('onlPassiveBeastsGrid');
+   // 需求 2：傳手機等待階段顯示 1. 座位順序圓圖、2. 各回合發言記錄、3. 各回合獸首投票票型（點擊獸首看攤開明細）
+   renderWaitingTurnCircleSeats(room, me, curRound);
+   renderWaitingTurnSpeeches(room, me, curRound);
+   renderWaitingTurnBeastsChips(room, me, curRound);
+
+   const pGrid = document.getElementById('onlPassiveBeastsGrid');
  if (pGrid && curRound && curRound.beasts) {
  pGrid.innerHTML = '';
  const sorted = [...curRound.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
@@ -5138,6 +5592,11 @@ else {
  targetP.isAmbushed = true;
  }
  const tc = COLOR_PALETTE.find(c => c.id === targetP.colorId) || COLOR_PALETTE[0];
+ curRound.ambushedPlayerId = targetP.id;
+ curRound.ambushedPlayerName = targetP.name;
+ curRound.ambushedPlayerColor = tc.name;
+ curRound.turnLogs[myOnlinePlayerId].yaoTargetId = targetP.id;
+ curRound.turnLogs[myOnlinePlayerId].yaoTargetColor = tc.name;
  curRound.turnLogs[myOnlinePlayerId].ability = `偷襲【${tc.name}色 ${targetP.name}】`;
  }
  }
@@ -5486,9 +5945,20 @@ async function onlConfirmPassNextPlayer() {
             const p = (room.players || []).find(x => x.id === pId);
             if (!p) return;
             const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+
+            // 需求3：僅針對當前登入者本人疊加專屬微型狀態浮標 (Badge)，他人端完全不可見
+            let privateBadge = '';
+            if (pId === myOnlinePlayerId) {
+              const meP = (room.players || []).find(x => x.id === myOnlinePlayerId);
+              privateBadge = getPrivateRoleBadgeHtml(meP, r, room);
+            }
+
             chipsHtml += `
-              <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
-                ${p.repChar || getRepresentativeChar(p.name)}
+              <div class="flex flex-col items-center flex-shrink-0">
+                ${privateBadge}
+                <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
+                  ${p.repChar || getRepresentativeChar(p.name)}
+                </div>
               </div>
             `;
           });
@@ -5502,7 +5972,79 @@ async function onlConfirmPassNextPlayer() {
       }
     }
 
-    function renderPassOrderRows(room, curRound) {
+    
+  // =========================================================================
+  // 需求 3：角色私有狀態浮標（僅自己可見，前端條件渲染）
+  // 1. 老朝奉：自己頭像上方顯示 [開啟] 或 [關閉]
+  // 2. 藥不然：自己頭像上方顯示 [偷紅] / [偷藍] 等或 [不偷]
+  // 3. 鄭國渠：自己頭像上方顯示 [封鼠] (或對應獸首) 或 [不封]
+  // =========================================================================
+  function getPrivateRoleBadgeHtml(me, r, room) {
+    if (!me || !r) return '';
+    const turnLogs = r.turnLogs || {};
+    const myLog = turnLogs[me.id] || {};
+    const curRIdx = (room && room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+    const isCurrentRound = (r.roundNum === curRIdx + 1);
+
+    // 1. 老朝奉：自己頭像上方顯示 [開啟] 或 [關閉]
+    if (me.role === '老朝奉') {
+      let isLao = false;
+      if (r.laoChaoFengActive === true) {
+        isLao = true;
+      } else if (isCurrentRound && onlTempLaoActive === true) {
+        isLao = true;
+      } else if (myLog.ability && myLog.ability.includes('開啟')) {
+        isLao = true;
+      }
+      return `<span class="text-[8px] leading-tight font-mono font-black px-1 py-0.5 rounded mb-0.5 shadow-xs ${isLao ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse' : 'bg-neutral-800 text-neutral-400 border border-neutral-600'}">[${isLao ? '開啟' : '關閉'}]</span>`;
+    }
+
+    // 2. 藥不然：自己頭像上方顯示 [偷紅] 或 [不偷]
+    if (me.role === '藥不然') {
+      let ambushedId = r.ambushedPlayerId || (isCurrentRound ? onlYaoTargetId : null) || myLog.yaoTargetId;
+      let colorName = r.ambushedPlayerColor || myLog.yaoTargetColor;
+
+      if (!colorName && ambushedId) {
+        const targetP = (room.players || []).find(p => p.id === ambushedId || p.name === ambushedId);
+        if (targetP) {
+          const targetPc = COLOR_PALETTE.find(c => c.id === targetP.colorId);
+          colorName = targetPc ? targetPc.name : targetP.name.charAt(0);
+        }
+      }
+
+      if (!colorName && myLog.ability && myLog.ability.includes('偷襲【')) {
+        const m = myLog.ability.match(/【(.*?)色/);
+        if (m) colorName = m[1];
+      }
+
+      if (colorName && (!myLog.ability || !myLog.ability.includes('跳過'))) {
+        return `<span class="text-[8px] leading-tight font-mono font-black px-1 py-0.5 rounded mb-0.5 bg-amber-950 text-amber-300 border border-amber-500 shadow-xs animate-pulse">[偷${colorName}]</span>`;
+      } else {
+        return `<span class="text-[8px] leading-tight font-mono font-bold px-1 py-0.5 rounded mb-0.5 bg-neutral-800 text-neutral-400 border border-neutral-600">[不偷]</span>`;
+      }
+    }
+
+    // 3. 鄭國渠：自己頭像上方顯示 [封鼠] (或對應獸首) 或 [不封]
+    if (me.role === '鄭國渠') {
+      let blocked = r.blockedBeast || (isCurrentRound ? onlTempZhengBlock : null) || myLog.blockedBeast;
+      if (!blocked && myLog.ability && myLog.ability.includes('封鎖【')) {
+        const m = myLog.ability.match(/【(.*?)】/);
+        if (m) blocked = m[1];
+      }
+
+      if (blocked && blocked !== '__SKIP__' && !blocked.includes('不封鎖')) {
+        const beastChar = blocked.replace(/[【】]/g, '').slice(-1);
+        return `<span class="text-[8px] leading-tight font-mono font-black px-1 py-0.5 rounded mb-0.5 bg-purple-950 text-purple-300 border border-purple-500 shadow-xs animate-pulse">[封${beastChar}]</span>`;
+      } else {
+        return `<span class="text-[8px] leading-tight font-mono font-bold px-1 py-0.5 rounded mb-0.5 bg-neutral-800 text-neutral-400 border border-neutral-600">[不封]</span>`;
+      }
+    }
+
+    return '';
+  }
+  window.getPrivateRoleBadgeHtml = getPrivateRoleBadgeHtml;
+
+function renderPassOrderRows(room, curRound) {
  const actingId = room.currentTurnPlayerId;
 
  // 修改5: 本回合手機傳遞順序上方要有前幾回合手機傳遞順序
@@ -5519,9 +6061,17 @@ async function onlConfirmPassNextPlayer() {
  const p = (room.players || []).find(x => x.id === pId);
  if (!p) return;
  const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+ let privateBadge = '';
+ if (pId === myOnlinePlayerId) {
+   const meP = (room.players || []).find(x => x.id === myOnlinePlayerId);
+   privateBadge = getPrivateRoleBadgeHtml(meP, rObj, room);
+ }
  chipsHtml += `
+ <div class="flex flex-col items-center flex-shrink-0">
+ ${privateBadge}
  <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
  ${p.repChar || getRepresentativeChar(p.name)}
+ </div>
  </div>
  `;
  });
@@ -5584,8 +6134,16 @@ async function onlConfirmPassNextPlayer() {
  const isWhite = pc.id === 'white';
  const flashClass = isActing ? (isWhite ? 'flashing-acting-white-player' : 'flashing-acting-normal') : '';
 
+ // 需求 2：在手機傳遞階段傳遞順序上，老朝奉/藥不然/鄭國渠看到自己頭頂的專屬技能狀態浮標 (僅自己可見)
+ let privateBadge = '';
+ if (pId === myOnlinePlayerId) {
+   const meP = (room.players || []).find(x => x.id === myOnlinePlayerId);
+   privateBadge = getPrivateRoleBadgeHtml(meP, rObj, room);
+ }
+
  container.innerHTML += `
- <div class="flex items-center flex-shrink-0">
+ <div class="flex flex-col items-center flex-shrink-0">
+ ${privateBadge}
  <div class="w-8 h-8 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-xs shadow select-none ${flashClass}" title="${p.name}">
  ${p.repChar || getRepresentativeChar(p.name)}
  </div>
@@ -5600,8 +6158,274 @@ async function onlConfirmPassNextPlayer() {
  renderOnlineDiscussionView(onlineRoomData, onlineRoomData.players.find(p => p.id === myOnlinePlayerId));
  }
 
+
+  // =========================================================================
+  // 需求 3：老朝奉陣營技能回顧日誌 (Secret Action Log)
+  // =========================================================================
+  let _secretActionLogModalOpen = false;
+  function toggleSecretActionLogModal() {
+    _secretActionLogModalOpen = !_secretActionLogModalOpen;
+    const modal = document.getElementById('onlSecretActionLogModal');
+    if (modal) {
+      if (_secretActionLogModalOpen) {
+        modal.classList.remove('hidden');
+        renderSecretActionLogContent();
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+    if (window.soundCtrl) window.soundCtrl.playClick();
+  }
+  window.toggleSecretActionLogModal = toggleSecretActionLogModal;
+
+  function renderSecretActionLogContent() {
+    const container = document.getElementById('onlSecretActionLogContent');
+    if (!container) return;
+    const room = onlineRoomData;
+    if (!room || !room.rounds) {
+      container.innerHTML = '<div class="text-neutral-500 py-4 text-center">暫無密策資料</div>';
+      return;
+    }
+
+    const me = (room.players || []).find(p => p.id === myOnlinePlayerId);
+    if (!me || !['老朝奉', '藥不然', '鄭國渠', '連妹'].includes(me.role)) {
+      container.innerHTML = '<div class="text-neutral-500 py-4 text-center">非老朝奉陣營，無權查閱密策備忘錄</div>';
+      return;
+    }
+
+    let html = '';
+    const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+
+    for (let r = 0; r <= curRoundIdx; r++) {
+      const rd = room.rounds[r];
+      if (!rd) continue;
+      const turnLogs = rd.turnLogs || {};
+
+      html += `<div class="p-3 bg-neutral-900/90 border border-red-900/40 rounded-xl space-y-2">`;
+      html += `<div class="text-xs font-black text-red-400 border-b border-red-900/30 pb-1 flex justify-between items-center">`;
+      html += `<span>第 ${r + 1} 回合密策動態</span>`;
+      html += `<span class="text-[10px] text-neutral-400">${r === curRoundIdx ? '【本回合】' : '【歷史回合】'}</span>`;
+      html += `</div>`;
+
+      // 密策表格
+      html += `<div class="overflow-x-auto"><table class="w-full text-[11px] text-left border-collapse">`;
+      html += `<thead><tr class="text-neutral-400 border-b border-neutral-800 text-[10px]">`;
+      html += `<th class="py-1 pr-1 font-bold">角色</th>`;
+      html += `<th class="py-1 px-1 font-bold">技能名稱</th>`;
+      html += `<th class="py-1 px-1 font-bold">目標</th>`;
+      html += `<th class="py-1 pl-1 font-bold">觸發效果</th>`;
+      html += `</tr></thead><tbody class="divide-y divide-neutral-800/60">`;
+
+      // 1. 老朝奉
+      const laoP = (room.players || []).find(p => p.role === '老朝奉');
+      const laoLog = (laoP && turnLogs[laoP.id]) || {};
+      const isLaoActive = (rd.laoChaoFengActive !== undefined) ? rd.laoChaoFengActive : (laoLog.ability && laoLog.ability.includes('開啟'));
+      html += `<tr>`;
+      html += `<td class="py-1.5 pr-1 font-bold text-red-300">老朝奉</td>`;
+      html += `<td class="py-1.5 px-1 text-amber-300">混淆顛倒</td>`;
+      html += `<td class="py-1.5 px-1 text-neutral-300">全體好人</td>`;
+      html += `<td class="py-1.5 pl-1 ${isLaoActive ? 'text-rose-400 font-bold' : 'text-neutral-400'}">${isLaoActive ? '🔴 開啟擾亂 (反轉好人查驗結果)' : '⚪ 未開啟擾亂 (真偽正常)'}</td>`;
+      html += `</tr>`;
+
+      // 2. 藥不然
+      const yaoP = (room.players || []).find(p => p.role === '藥不然');
+      const yaoLog = (yaoP && turnLogs[yaoP.id]) || {};
+      const ambushedId = rd.ambushedPlayerId || (yaoLog.ability && yaoLog.ability.match(/【(.*?)】/) ? yaoLog.ability.match(/【(.*?)】/)[1] : null);
+      const ambushedP = (room.players || []).find(p => p.id === ambushedId || p.name === ambushedId);
+      html += `<tr>`;
+      html += `<td class="py-1.5 pr-1 font-bold text-red-300">藥不然</td>`;
+      html += `<td class="py-1.5 px-1 text-amber-300">偷襲暗算</td>`;
+      html += `<td class="py-1.5 px-1 text-neutral-300">${ambushedP ? ambushedP.name : (ambushedId ? ambushedId : '無')}</td>`;
+      html += `<td class="py-1.5 pl-1 ${ambushedId ? 'text-amber-400 font-bold' : 'text-neutral-400'}">${ambushedId ? '⚔️ 查驗黑屏癱瘓 (眼前一片黑)' : '未偷襲'}</td>`;
+      html += `</tr>`;
+
+      // 3. 鄭國渠
+      const zhengP = (room.players || []).find(p => p.role === '鄭國渠');
+      const zhengLog = (zhengP && turnLogs[zhengP.id]) || {};
+      const blockedBeast = rd.blockedBeast || (zhengLog.ability && zhengLog.ability.match(/【(.*?)】/) ? zhengLog.ability.match(/【(.*?)】/)[1] : null);
+      html += `<tr>`;
+      html += `<td class="py-1.5 pr-1 font-bold text-red-300">鄭國渠</td>`;
+      html += `<td class="py-1.5 px-1 text-amber-300">贗造封鎖</td>`;
+      html += `<td class="py-1.5 px-1 text-neutral-300">${blockedBeast ? `【${blockedBeast}】` : '無'}</td>`;
+      html += `<td class="py-1.5 pl-1 ${blockedBeast ? 'text-amber-400 font-bold' : 'text-neutral-400'}">${blockedBeast ? `🔒 封鎖【${blockedBeast}】無法辨別真偽` : '未封鎖'}</td>`;
+      html += `</tr>`;
+
+      html += `</tbody></table></div>`;
+      html += `</div>`;
+    }
+
+    container.innerHTML = html;
+  }
+  window.renderSecretActionLogContent = renderSecretActionLogContent;
+
+  // =========================================================================
+  // 需求 5：非行動/傳遞階段的「常駐戰局情報看板 (Game Intel Dashboard)」
+  // =========================================================================
+  let _gameIntelCollapsed = false;
+  function toggleGameIntelDashboardCollapse() {
+    _gameIntelCollapsed = !_gameIntelCollapsed;
+    const body = document.getElementById('onlGameIntelBody');
+    const btn = document.getElementById('btnToggleIntelCollapse');
+    if (body && btn) {
+      if (_gameIntelCollapsed) {
+        body.classList.add('hidden');
+        btn.innerText = '展開 ▼';
+      } else {
+        body.classList.remove('hidden');
+        btn.innerText = '收合 ▲';
+      }
+    }
+  }
+  window.toggleGameIntelDashboardCollapse = toggleGameIntelDashboardCollapse;
+
+  function renderOnlineGameIntelDashboard(room, me, curRound) {
+    if (!room || !me) return;
+    const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+    const turnLogs = (curRound && curRound.turnLogs) || {};
+    const myLog = turnLogs[me.id] || {};
+
+    // 1. 本回合即時資訊 (剛剛自己查驗的獸首名稱與真偽結果)
+    const inspectListEl = document.getElementById('onlIntelInspectList');
+    const inspectTagEl = document.getElementById('onlIntelInspectStatusTag');
+    const myInspected = (myLog.inspect && myLog.inspect.length > 0) ? myLog.inspect : (onlMyInspectedBeastsInTurn && onlMyInspectedBeastsInTurn.length > 0 ? onlMyInspectedBeastsInTurn : []);
+
+    if (inspectListEl && inspectTagEl) {
+      if (myInspected.length > 0) {
+        inspectTagEl.innerHTML = `<span class="text-emerald-400 font-bold">✓ 已完成本輪查驗 (${myInspected.length} 件)</span>`;
+        inspectListEl.innerHTML = myInspected.map(item => {
+          const isReal = item.resultText && item.resultText.includes('真品');
+          const isFake = item.resultText && item.resultText.includes('贗品');
+          const bg = isReal ? 'bg-emerald-950/80 border-emerald-600/80 text-emerald-300' : (isFake ? 'bg-rose-950/80 border-rose-600/80 text-rose-300' : 'bg-neutral-800 border-neutral-700 text-neutral-300');
+          return `<span class="px-2 py-1 rounded-lg border text-xs font-mono font-bold ${bg}">${item.resultText || item.beastName}</span>`;
+        }).join('');
+      } else {
+        inspectTagEl.innerHTML = `<span class="text-amber-400 font-mono">傳遞等待中</span>`;
+        inspectListEl.innerHTML = `<span class="text-[11px] text-neutral-500">尚未輪到您查驗，手機傳遞中...</span>`;
+      }
+    }
+
+    // 2. 角色狀態 (自身身分卡、技能名稱、剩餘使用次數/發動狀態)
+    const roleBadgeEl = document.getElementById('onlIntelRoleBadge');
+    const skillDescEl = document.getElementById('onlIntelSkillDesc');
+    if (roleBadgeEl && skillDescEl) {
+      const isGood = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'].includes(me.role);
+      roleBadgeEl.className = `text-[10px] px-2 py-0.5 rounded font-bold border ${isGood ? 'bg-blue-950 text-blue-300 border-blue-700' : 'bg-red-950 text-red-300 border-red-700'}`;
+      roleBadgeEl.innerText = `${me.role || '未知'} (${isGood ? '許願陣營' : '老朝奉陣營'})`;
+
+      let skillStatus = '';
+      if (me.role === '許願') {
+        skillStatus = `【專屬被動】古董真傳：每回合查驗 2 件獸首（本輪已查驗 ${myInspected.length}/2 件）。`;
+      } else if (me.role === '方震') {
+        const checkedP = myLog.fangZhenTargetId || onlFangZhenSelectedTargetId;
+        skillStatus = `【主動技能】陣營查驗：每回合可查驗 1 位玩家陣營。本輪狀態：${checkedP ? `已指定查驗【${checkedP}】` : '本輪尚未發動'}。`;
+      } else if (me.role === '姬雲浮') {
+        skillStatus = `【專屬被動】泰斗法眼：不受老朝奉擾亂影響，看見的永遠是真實真偽（但遭偷襲則封閉）。`;
+      } else if (me.role === '黃煙煙' || me.role === '木戶加奈') {
+        const isConfused = me.confusedRound === curRoundIdx;
+        skillStatus = `【特異體質】靈動身手：第 ${ (me.confusedRound !== undefined && me.confusedRound !== null) ? (me.confusedRound + 1) : '?' } 回合會陷入困惑（當前狀態：${isConfused ? '⚠️ 本回合困惑無法辨別' : '✓ 正常無困惑'}）。`;
+      } else if (me.role === '老朝奉') {
+        const isLao = curRound.laoChaoFengActive || onlTempLaoActive;
+        skillStatus = `【主動技能】混淆顛倒：每輪可開啟擾亂。本輪狀態：${isLao ? '🔴 擾亂已開啟（後續好人查驗反轉）' : '⚪ 未開啟擾亂'}。`;
+      } else if (me.role === '藥不然') {
+        const yaoTarget = curRound.ambushedPlayerId || onlYaoTargetId;
+        skillStatus = `【主動技能】暗中偷襲：每輪可偷襲 1 位玩家。本輪狀態：${yaoTarget ? `⚔️ 已偷襲【${yaoTarget}】` : '本輪尚未偷襲'}。`;
+      } else if (me.role === '鄭國渠') {
+        const block = curRound.blockedBeast || onlTempZhengBlock;
+        skillStatus = `【主動技能】贗造封鎖：每輪可封鎖 1 件獸首。本輪狀態：${block ? `🔒 已封鎖【${block}】` : '本輪未封鎖'}。`;
+      } else {
+        skillStatus = `正常查驗模式。`;
+      }
+      skillDescEl.innerHTML = skillStatus;
+    }
+
+    // 3. 圓桌座位圖 (Seat & Turn Order Map)
+    const seatMapEl = document.getElementById('onlIntelSeatMap');
+    if (seatMapEl) {
+      const players = room.players || [];
+      const turnPlayerId = room.currentTurnPlayerId;
+      const passOrder = (curRound && curRound.passOrder) || [];
+
+      seatMapEl.innerHTML = players.map((p, idx) => {
+        const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+        const isTurn = (p.id === turnPlayerId);
+        const hasPassed = passOrder.includes(p.id);
+        const isMe = (p.id === me.id);
+
+        let borderClass = 'border-neutral-800 bg-neutral-950/80';
+        if (isTurn) {
+          borderClass = 'border-amber-400 ring-2 ring-amber-400 bg-amber-950/40 animate-pulse';
+        } else if (hasPassed) {
+          borderClass = 'border-neutral-700 bg-neutral-900/60 opacity-70';
+        }
+
+        return `<div class="p-1.5 rounded-lg border ${borderClass} flex flex-col items-center justify-center space-y-0.5">
+          <div class="flex items-center space-x-1">
+            <span class="w-2 h-2 rounded-full ${pc.dotClass || 'bg-amber-500'}"></span>
+            <span class="text-[10px] font-bold text-neutral-200 truncate max-w-[55px]">${p.name}</span>
+          </div>
+          <div class="text-[9px] ${isTurn ? 'text-amber-300 font-bold' : (hasPassed ? 'text-neutral-400' : 'text-neutral-400')}">
+            ${isTurn ? '★行動中' : (hasPassed ? '✓已行動' : '等待')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // 4. 歷史編年史 (Round History)
+    const chronicleEl = document.getElementById('onlIntelHistoryChronicle');
+    if (chronicleEl) {
+      let chronicleHtml = '';
+      const rounds = room.rounds || [];
+      for (let r = 0; r < rounds.length; r++) {
+        const rd = rounds[r];
+        if (!rd) continue;
+        const beasts = rd.beasts || [];
+        const votes = rd.votes || {};
+        const isPrior = (r < curRoundIdx);
+
+        chronicleHtml += `<div class="p-2 rounded-lg bg-neutral-950/80 border border-neutral-800/80 space-y-1">`;
+        chronicleHtml += `<div class="flex justify-between items-center text-[10px] font-bold text-neutral-300 border-b border-neutral-800/50 pb-0.5">`;
+        chronicleHtml += `<span>第 ${r + 1} 回合獸首：</span>`;
+        chronicleHtml += `<span class="${isPrior ? 'text-emerald-400' : 'text-amber-400'}">${isPrior ? '歷史結算' : '當前進行中'}</span>`;
+        chronicleHtml += `</div>`;
+
+        chronicleHtml += `<div class="grid grid-cols-4 gap-1 text-[10px] text-center mt-1">`;
+        beasts.forEach(b => {
+          let statusText = isPrior ? (b.isReal ? '真品' : '贗品') : '未揭曉';
+          let statusColor = isPrior ? (b.isReal ? 'text-emerald-400' : 'text-rose-400') : 'text-neutral-400';
+          chronicleHtml += `<div class="bg-neutral-900 border border-neutral-800 rounded p-1">`;
+          chronicleHtml += `<div class="font-bold text-neutral-200">${b.name}</div>`;
+          chronicleHtml += `<div class="${statusColor}">${statusText}</div>`;
+          chronicleHtml += `</div>`;
+        });
+        chronicleHtml += `</div>`;
+
+        // 若有發言紀錄
+        if (rd.speeches && rd.speeches.length > 0) {
+          chronicleHtml += `<div class="text-[9px] text-neutral-400 mt-1 space-y-0.5 border-t border-neutral-800/40 pt-1">`;
+          chronicleHtml += `<div class="text-neutral-400 font-bold">第 ${r + 1} 回合公開發言摘要：</div>`;
+          rd.speeches.forEach(sp => {
+            const spPlayer = (room.players || []).find(p => p.id === sp.playerId);
+            const spName = spPlayer ? spPlayer.name : '玩家';
+            chronicleHtml += `<div class="truncate"><span class="text-neutral-300 font-bold">${spName}：</span><span>${sp.text || '(無)'}</span></div>`;
+          });
+          chronicleHtml += `</div>`;
+        }
+
+        chronicleHtml += `</div>`;
+      }
+
+      if (!chronicleHtml) {
+        chronicleHtml = '<div class="text-[10px] text-neutral-500 py-1">暫無前幾回合歷史資料</div>';
+      }
+      chronicleEl.innerHTML = chronicleHtml;
+    }
+  }
+  window.renderOnlineGameIntelDashboard = renderOnlineGameIntelDashboard;
+
  function renderOnlineDiscussionView(room, me) {
  const curRoundIdx = room.currentRoundIdx || 0;
+
+
  const curRound = room.rounds[curRoundIdx];
  const speakerId = room.currentSpeakerId;
  const isMySpeechTurn = (speakerId === myOnlinePlayerId);
@@ -6003,10 +6827,17 @@ container.appendChild(row);
 
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl mb-1.5 shadow-sm';
+        // 需求 3：鄭國渠在鑑寶投票區對應獸首欄位上，渲染醒目的 [封印] 狀態徽章 (僅自己可見)
+        let zhengBlockBadge = '';
+        if (me && me.role === '鄭國渠' && curRound && curRound.blockedBeast === b.name) {
+          zhengBlockBadge = `<span class="text-[10px] font-black bg-purple-950 text-purple-300 border border-purple-500 px-2 py-0.5 rounded shadow-sm animate-pulse ml-1.5">[封印]</span>`;
+        }
+
         row.innerHTML = `
           <div class="flex items-center space-x-1.5">
             <span class="text-xs font-mono text-neutral-500">第${idx+1}位</span>
             <span class="text-xl font-black text-amber-300 w-10">${b.name}</span>
+            ${zhengBlockBadge}
             ${myInspectBadge}
           </div>
           <div class="flex items-center space-x-2">
@@ -6223,9 +7054,20 @@ container.appendChild(row);
             const p = (room.players || []).find(x => x.id === pId);
             if (!p) return;
             const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+
+            // 需求 2：老朝奉/藥不然/鄭國渠在鑑寶投票階段欄位下方的手機傳遞順序看到本輪以及前幾場次的技能效果 (僅自己可見)
+            let privateBadge = '';
+            if (pId === myOnlinePlayerId) {
+              const meP = (room.players || []).find(x => x.id === myOnlinePlayerId);
+              privateBadge = getPrivateRoleBadgeHtml(meP, r, room);
+            }
+
             chipsHtml += `
-              <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
-                ${p.repChar || getRepresentativeChar(p.name)}
+              <div class="flex flex-col items-center flex-shrink-0">
+                ${privateBadge}
+                <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
+                  ${p.repChar || getRepresentativeChar(p.name)}
+                </div>
               </div>
             `;
           });
@@ -6295,12 +7137,15 @@ container.appendChild(row);
  const room = onlineRoomData;
  const curRoundIdx = room.currentRoundIdx || 0;
 
- // 本地變數與 UI 即刻歸零重置
+ // 本地變數與 UI 即刻歸零重置，確保各回合發動情況彼此獨立不污染
  onlMyInspectedBeastsInTurn = [];
  onlSelectedInspectBeast = null;
  onlSelectedPassNextId = null;
  onlMyVoteMap = {};
  onlYaoTargetId = null;
+ onlTempLaoActive = false;
+ onlTempZhengBlock = null;
+ onlFangZhenSelectedTargetId = null;
 
  const resBox = document.getElementById('onlAppraiseResultBox');
  if (resBox) resBox.classList.add('hidden');
@@ -6939,6 +7784,35 @@ pDiv.innerHTML = `
  }
  }
 
+ // 依角色與回合解析並展示精確的技能發動目標與情形
+ let abilityDesc = tLog.ability || '無操作';
+ if (p.role === '老朝奉') {
+   const isLao = (rObj && rObj.laoChaoFengActive) || (tLog.ability && tLog.ability.includes('開啟'));
+   abilityDesc = isLao ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（真偽正常）';
+ } else if (p.role === '藥不然') {
+   const ambushedId = (rObj && rObj.ambushedPlayerId) || tLog.yaoTargetId;
+   if (tLog.ability && tLog.ability.includes('偷襲【')) {
+     abilityDesc = tLog.ability;
+   } else if (ambushedId) {
+     const targetP = (room.players || []).find(x => x.id === ambushedId);
+     const tc = targetP ? COLOR_PALETTE.find(c => c.id === targetP.colorId) : null;
+     abilityDesc = `偷襲【${tc ? tc.name : ''}色 ${targetP ? targetP.name : '玩家'}】`;
+   } else {
+     abilityDesc = tLog.ability || '未發動偷襲';
+   }
+ } else if (p.role === '鄭國渠') {
+   const blocked = (rObj && rObj.blockedBeast) || tLog.blockedBeast;
+   if (tLog.ability && tLog.ability.includes('封鎖【')) {
+     abilityDesc = tLog.ability;
+   } else if (blocked && blocked !== '__SKIP__') {
+     abilityDesc = `封鎖【${blocked}】`;
+   } else {
+     abilityDesc = tLog.ability || '不封鎖任何獸首';
+   }
+ } else if (p.role === '方震') {
+   abilityDesc = tLog.ability || '未查驗玩家陣營';
+ }
+
  roundsHtml += `
  <div class="text-[11px] bg-neutral-950 p-2 rounded border border-neutral-800/60 space-y-0.5">
  <div class="flex items-center justify-between">
@@ -6946,7 +7820,7 @@ pDiv.innerHTML = `
  <span class="text-amber-300 font-bold">${passToName}</span>
  </div>
  <div>• 查驗：${inspectStr}</div>
- <div>• 能力：${tLog.ability || '無操作'}</div>
+ <div>• 能力：<b class="text-neutral-200">${abilityDesc}</b></div>
  </div>
  `;
  });
@@ -7277,10 +8151,10 @@ pDiv.innerHTML = `
    return activeHumans.length > 0 ? activeHumans[0].id : null;
  }
 
- const hostId = getRoomHostId(room);
+ // 需求 2.2：房主單一驅動權 (Host Authority)
+ // 電腦玩家的打字與發言邏輯僅能且必須由房主客戶端發起，避免多個客戶端重複發送
+ const hostId = (room && room.hostId) ? room.hostId : getRoomHostId(room);
  const isHost = hostId === myOnlinePlayerId;
-
- // 只有房主客戶端具備驅動電腦玩家的計算權限，嚴防多端衝突或推諉
  if (!isHost) return;
 
  const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
@@ -7341,16 +8215,17 @@ pDiv.innerHTML = `
  // =========================================================================
  let _botSafetyTimer = null;
 
+ // 需求 2.3：死鎖防禦——全域啟動 4 秒強制超時器 (Watchdog)
  function startBotSafetyWatchdog(room, actionKey) {
    clearBotSafetyWatchdog();
    _botSafetyTimer = setTimeout(async () => {
-     console.warn(`[Bot Watchdog] 偵測到電腦玩家動作超時 (>5s)，強制推進！action=${actionKey}`);
+     console.warn(`[Bot Watchdog] 偵測到電腦玩家動作超時 (>4s)，強制推進！action=${actionKey}`);
      try {
-       await forceNextTurn(room);
+       await advanceToNextPlayer(room);
      } catch(e) {
        console.error('看門狗強制推進失敗:', e);
      }
-   }, 5000);
+   }, 4000);
  }
 
  function clearBotSafetyWatchdog() {
@@ -7359,6 +8234,11 @@ pDiv.innerHTML = `
      _botSafetyTimer = null;
    }
  }
+
+ async function advanceToNextPlayer(room) {
+   return await forceNextTurn(room);
+ }
+ window.advanceToNextPlayer = advanceToNextPlayer;
 
  async function forceNextTurn(room) {
    clearBotSafetyWatchdog();
@@ -7460,7 +8340,62 @@ pDiv.innerHTML = `
  return { beastName: b.name, resultText: txt, actualIsReal: b.isReal };
  });
 
- roundObj.turnLogs[mockPlayerId].ability = '已完成能力行動';
+ // 依角色身分真實執行並記錄電腦玩家技能目標
+ if (mockP.role === '老朝奉') {
+   const laoActive = Math.random() < 0.65;
+   roundObj.laoChaoFengActive = laoActive;
+   roundObj.turnLogs[mockPlayerId].laoActive = laoActive;
+   roundObj.turnLogs[mockPlayerId].ability = laoActive ? '開啟擾亂（真偽反轉）' : '未開啟擾亂';
+ } else if (mockP.role === '藥不然') {
+   const potentialTargets = freshRoom.players.filter(p => p.id !== mockPlayerId);
+   if (potentialTargets.length > 0) {
+     const targetP = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+     const tc = COLOR_PALETTE.find(c => c.id === targetP.colorId) || COLOR_PALETTE[0];
+     roundObj.ambushedPlayerId = targetP.id;
+     roundObj.ambushedPlayerName = targetP.name;
+     roundObj.ambushedPlayerColor = tc.name;
+     roundObj.turnLogs[mockPlayerId].yaoTargetId = targetP.id;
+     roundObj.turnLogs[mockPlayerId].yaoTargetColor = tc.name;
+     roundObj.turnLogs[mockPlayerId].ability = `偷襲【${tc.name}色 ${targetP.name}】`;
+     if (targetP.role === '姬雲浮') {
+       targetP.isPermanentlyAmbushed = true;
+     } else {
+       targetP.isAmbushed = true;
+       if (targetP.role === '方震') {
+         const xu = freshRoom.players.find(p => p.role === '許願');
+         if (xu) xu.isAmbushed = true;
+       }
+     }
+   } else {
+     roundObj.turnLogs[mockPlayerId].ability = '跳過不偷襲';
+   }
+ } else if (mockP.role === '鄭國渠') {
+   if (chosen.length > 0) {
+     const blockB = chosen[Math.floor(Math.random() * chosen.length)];
+     roundObj.blockedBeast = blockB.name;
+     roundObj.turnLogs[mockPlayerId].blockedBeast = blockB.name;
+     roundObj.turnLogs[mockPlayerId].ability = `封鎖【${blockB.name}】`;
+   } else {
+     roundObj.turnLogs[mockPlayerId].ability = '不封鎖任何獸首';
+   }
+ } else if (mockP.role === '方震') {
+   const potentialTargets = freshRoom.players.filter(p => p.id !== mockPlayerId);
+   if (potentialTargets.length > 0) {
+     const targetP = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+     const isGood = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'].includes(targetP.role);
+     const campStr = isGood ? '許願陣營 (好人)' : '老朝奉陣營 (壞人)';
+     const tc = COLOR_PALETTE.find(c => c.id === targetP.colorId) || COLOR_PALETTE[0];
+     roundObj.turnLogs[mockPlayerId].fangZhenTargetId = targetP.id;
+     roundObj.turnLogs[mockPlayerId].fangZhenTargetName = targetP.name;
+     roundObj.turnLogs[mockPlayerId].fangZhenTargetColor = tc.name;
+     roundObj.turnLogs[mockPlayerId].fangZhenCamp = campStr;
+     roundObj.turnLogs[mockPlayerId].ability = `查驗【${tc.name}色 ${targetP.name}】：屬於【${campStr}】`;
+   } else {
+     roundObj.turnLogs[mockPlayerId].ability = '無操作';
+   }
+ } else {
+   roundObj.turnLogs[mockPlayerId].ability = '已完成能力行動';
+ }
 
  // 2. 指定下一位未查驗玩家
  const passOrder = roundObj.passOrder || [];
@@ -7533,8 +8468,8 @@ pDiv.innerHTML = `
    speakerBadge.innerHTML = `<span class="text-amber-400 font-bold animate-pulse font-mono">🤖 電腦玩家【${mockP.name}】思考中...</span>`;
  }
 
- // 延遲 1.5 ~ 2.5 秒模擬自然擬人化發言節奏
- const delay = 1500 + Math.floor(Math.random() * 1000);
+ // 需求 2.3：擬真打字延遲 1.5 ~ 2 秒
+ const delay = 1500 + Math.floor(Math.random() * 500);
  setTimeout(async () => {
    clearBotSafetyWatchdog();
  try {
@@ -7551,15 +8486,30 @@ pDiv.innerHTML = `
 
  if (!roundObj.speeches) roundObj.speeches = [];
 
- const cannedSpeeches = [
- '我這回合查驗到的獸首是真品，大家投票時可以多加參考！',
- '我覺得局勢挺微妙的，大家投票時務必謹慎，別被假情報帶偏。',
- '我查驗的獸首是假貨，投票時強烈建議避開！',
- '聽了前面幾位的分析，我覺得推論滿合理的，我支持大家的結論。',
- '這把一定要算好第二名的票數，避免壞人順利攪局！',
- '我查驗很有信心，待會投票我會投給確定是真品的那隻。'
- ];
- const speechText = cannedSpeeches[Math.floor(Math.random() * cannedSpeeches.length)];
+ // 需求 2.1：真實對話發送，依據角色設定（好人/老朝奉陣營）從預設台詞庫隨機選取
+ const isEvilCamp = ['老朝奉', '藥不然', '鄭國渠'].includes(mockP.role);
+ let speechText = '';
+ if (isEvilCamp) {
+   const evilSpeeches = [
+     '前面幾位的發言聽起來有點可疑，大家可別輕信啊。',
+     '我查驗到的感覺是真品，但我建議大家分散投票比較穩妥。',
+     '這隻獸首真偽有點爭議，大家不妨多觀察一下其他人的票型。',
+     '我覺得現在票數很關鍵，好人千萬別把票投散了，跟著我投就對了。',
+     '依我看，某幾個人的查驗結果互相矛盾，裡面肯定有老朝奉的人！',
+     '我查驗的結果跟大家不太一樣，可能有人在說謊喔。'
+   ];
+   speechText = evilSpeeches[Math.floor(Math.random() * evilSpeeches.length)];
+ } else {
+   const goodSpeeches = [
+     '我這回合查驗到的獸首是真品，大家投票時可以多加參考！',
+     '我覺得局勢挺微妙的，大家投票時務必謹慎，別被老朝奉帶偏。',
+     '我查驗的獸首是假貨，投票時強烈建議避開！',
+     '聽了前面幾位的分析，推論滿合理的，好人陣營這輪要團結投票。',
+     '這把一定要算好第二名的票數，避免壞人順利攪局！',
+     '我對自己查驗很有信心，待會投票我會投給確定是真品的那隻。'
+   ];
+   speechText = goodSpeeches[Math.floor(Math.random() * goodSpeeches.length)];
+ }
 
  // 核心修正：正確記錄 playerId 與 speakerName，發言列表中即時顯現
  roundObj.speeches.push({
@@ -7577,19 +8527,26 @@ pDiv.innerHTML = `
 
  // 尾家發言完畢後 (8位全部發言完畢)，正式開放投票！一個回合只發言一次
  if (nextIdx >= 8 || nextIdx >= speechOrder.length) {
- await db.doc(ONLINE_ROOM_DOC).update({
- status: 'voting',
- currentSpeakerId: null,
- rounds: freshRoom.rounds,
- lastActivityTime: Date.now()
- });
+   await db.doc(ONLINE_ROOM_DOC).update({
+     status: 'voting',
+     currentSpeakerId: null,
+     rounds: freshRoom.rounds,
+     lastActivityTime: Date.now()
+   });
  } else {
- const nextSpeakerId = speechOrder[nextIdx];
- await db.doc(ONLINE_ROOM_DOC).update({
- currentSpeakerId: nextSpeakerId,
- rounds: freshRoom.rounds,
- lastActivityTime: Date.now()
- });
+   const nextSpeakerId = speechOrder[nextIdx];
+   await db.doc(ONLINE_ROOM_DOC).update({
+     currentSpeakerId: nextSpeakerId,
+     rounds: freshRoom.rounds,
+     lastActivityTime: Date.now()
+   });
+
+   // 需求 1：若下一位發言者也是虛擬玩家，直接連貫排程推進，絕不等待看門狗輪詢，徹底消除卡死停頓！
+   if (nextSpeakerId && nextSpeakerId.startsWith('mock_p_')) {
+     setTimeout(() => {
+       executeMockSpeechStep(freshRoom, nextSpeakerId, roundObj);
+     }, 300);
+   }
  }
  clearBotSafetyWatchdog();
  showToast(`🤖 電腦玩家【${mockP.name}】已發言`, 'info', 1800);
@@ -7685,9 +8642,15 @@ pDiv.innerHTML = `
  }
  }
  function triggerMockPlayerSpeech(room, sId) {
- if (room.rounds && room.rounds[room.currentRoundIdx]) {
- executeMockSpeechStep(room, sId, room.rounds[room.currentRoundIdx]);
- }
+   if (!room || !sId || !room.rounds) return;
+   const hostId = (room && room.hostId) ? room.hostId : getRoomHostId(room);
+   if (hostId !== myOnlinePlayerId) return; // 僅房主驅動
+
+   if (_mockActionPending) return;
+   const curR = room.rounds[room.currentRoundIdx];
+   if (curR) {
+     executeMockSpeechStep(room, sId, curR);
+   }
  }
  function triggerMockPlayerVoting(room) {
     if (!room || !room.rounds || !room.rounds[room.currentRoundIdx]) return;
@@ -8171,6 +9134,7 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
  G.currentRoundIdx = 0;
  G.roleRevealIdx = 0;
  G.roleCardUnmasked = false;
+ _localRoleRevealWaitingHandover = true;
  G.blockedBeastThisRound = null;
  G.blockedBeastPositionThisRound = null;
  G.laoChaoFengActiveThisRound = false;
@@ -8184,54 +9148,148 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
  speak(`進入確認角色環節，${getSpokenColorName(c0.name)}確認`);
  }
 
+ let _localRoleCardOpen = false;
+ let _localRoleRevealWaitingHandover = true;
+
+ function enterRoleRevealCardView() {
+   _localRoleRevealWaitingHandover = false;
+   renderRoleRevealView();
+   if (window.soundCtrl) window.soundCtrl.playClick();
+ }
+ window.enterRoleRevealCardView = enterRoleRevealCardView;
+
  function toggleRoleCardMask() {
- if (G.roleCardUnmasked) return;
- G.roleCardUnmasked = true;
- const cover = document.getElementById('roleCardCover');
- const text = document.getElementById('roleCardText');
- const confirmBtn = document.getElementById('roleConfirmBtn');
- const charNameEl = document.getElementById('roleCharName');
+   const cover = document.getElementById('roleCardCover');
+   const text = document.getElementById('roleCardText');
+   const confirmBtn = document.getElementById('roleConfirmBtn');
+   const charNameEl = document.getElementById('roleCharName');
+   const wmBg = document.getElementById('roleCardWatermarkBg');
+   const p = G.players[G.roleRevealIdx];
+   if (!p) return;
 
- const p = G.players[G.roleRevealIdx];
- charNameEl.innerText = p ? p.role : '???';
- cover.classList.add('opacity-0', 'pointer-events-none');
- text.classList.add('unmasked');
+   // 需求 1：按一下即開啟，再按一下即關閉
+   _localRoleCardOpen = !_localRoleCardOpen;
 
- // 翻開時浮現淡淡的角色人物浮水印背景 (透明度約 20%)
- const wmBg = document.getElementById('roleCardWatermarkBg');
- if (wmBg && p && p.role) {
- const bgUrl = getRoleWatermarkUrl(p.role);
- if (bgUrl) {
- wmBg.style.backgroundImage = `url('${bgUrl}')`;
- wmBg.classList.remove('opacity-0');
- wmBg.classList.add('opacity-20');
+   if (_localRoleCardOpen) {
+     // 開啟角色卡片
+     if (charNameEl) charNameEl.innerText = p.role || '???';
+     if (cover) {
+       cover.classList.add('opacity-0', 'pointer-events-none');
+       cover.style.pointerEvents = 'none';
+     }
+     if (text) {
+       text.classList.remove('mask-blur');
+       text.classList.add('unmasked');
+     }
+     if (wmBg && p.role) {
+       const bgUrl = getRoleWatermarkUrl(p.role);
+       if (bgUrl) {
+         wmBg.style.backgroundImage = `url('${bgUrl}')`;
+         wmBg.classList.remove('opacity-0');
+         wmBg.classList.add('opacity-25');
+       }
+     }
+     // 下方確認按鈕解鎖可用
+     if (confirmBtn) {
+       confirmBtn.disabled = false;
+       confirmBtn.className = "w-full py-3.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base rounded-xl border border-neutral-700 transition cursor-pointer relative z-30 shadow-lg active:scale-[0.99]";
+     }
+   } else {
+     // 再次點擊關閉遮罩 (重新覆蓋防窺)
+     if (cover) {
+       cover.classList.remove('opacity-0', 'pointer-events-none');
+       cover.style.pointerEvents = 'auto';
+     }
+     if (text) {
+       text.classList.add('mask-blur');
+       text.classList.remove('unmasked');
+     }
+     if (wmBg) {
+       wmBg.classList.remove('opacity-25');
+       wmBg.classList.add('opacity-0');
+     }
+     // 保持下方確認角色按鈕解鎖可用，點擊下方確認按鍵可正常跳至下一位玩家
+     if (confirmBtn) {
+       confirmBtn.disabled = false;
+       confirmBtn.className = "w-full py-3.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base rounded-xl border border-neutral-700 transition cursor-pointer relative z-30 shadow-lg active:scale-[0.99]";
+     }
+   }
+   if (window.soundCtrl) window.soundCtrl.playClick();
  }
- }
-
- confirmBtn.disabled = false;
- confirmBtn.className = "w-full py-3.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base rounded-xl border border-neutral-700 transition cursor-pointer";
- }
+ window.toggleRoleCardMask = toggleRoleCardMask;
 
  function renderRoleRevealView() {
- const p = G.players[G.roleRevealIdx];
- if (!p) return;
+   const p = G.players[G.roleRevealIdx];
+   if (!p) return;
 
- const pColor = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
- document.getElementById('revealPlayerName').innerText = p.name;
- const badge = document.getElementById('revealColorBadge');
- badge.className = `w-4 h-4 rounded-full border ${pColor.dotClass} inline-block`;
+   const handoverWrapper = document.getElementById('roleHandoverWrapper');
+   const cardWrapper = document.getElementById('roleCardMainWrapper');
+   const pColor = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
 
- document.getElementById('roleCharName').innerText = '???';
- document.getElementById('roleCharName').className = "text-4xl font-black tracking-widest text-neutral-300 my-3";
- document.getElementById('revealProgressText').innerText = `進度：${G.roleRevealIdx + 1} / ${G.players.length} 位玩家`;
+   // 修改1：交接階段 (Handover Mode) 徹底隱藏卡片，點擊確認換人後絕不會看到下家的角色
+   if (_localRoleRevealWaitingHandover) {
+     if (handoverWrapper) handoverWrapper.classList.remove('hidden');
+     if (cardWrapper) cardWrapper.classList.add('hidden');
 
- G.roleCardUnmasked = false;
- document.getElementById('roleCardCover').classList.remove('opacity-0', 'pointer-events-none');
- document.getElementById('roleCardText').classList.remove('unmasked');
+     const hBadge = document.getElementById('roleHandoverColorBadge');
+     if (hBadge) hBadge.className = `w-4 h-4 rounded-full border ${pColor.dotClass} inline-block`;
 
- const confirmBtn = document.getElementById('roleConfirmBtn');
- confirmBtn.disabled = true;
- confirmBtn.className = "w-full py-3 bg-neutral-900 text-neutral-600 font-bold rounded-xl border border-neutral-800 transition cursor-not-allowed opacity-50";
+     const hName = document.getElementById('roleHandoverPlayerName');
+     if (hName) hName.innerText = p.name;
+
+     const hTag = document.getElementById('roleHandoverPlayerTag');
+     if (hTag) hTag.innerText = `【${pColor.name}色 ${p.name}】`;
+
+     const hProg = document.getElementById('roleHandoverProgressText');
+     if (hProg) hProg.innerText = `進度：${G.roleRevealIdx + 1} / ${G.players.length} 位玩家`;
+
+     const hBtn = document.getElementById('btnRoleHandoverReady');
+     if (hBtn) {
+       hBtn.className = `w-full py-4 rounded-xl font-black text-base shadow-xl transition cursor-pointer active:scale-[0.99] border ${pColor.bgClass}`;
+       hBtn.innerHTML = `我是【${pColor.name}色 ${p.name}】，準備查閱角色 ➔`;
+     }
+     return;
+   }
+
+   // 玩家本人接過手機並點擊進入後，展示該玩家的身分卡 (預設遮罩關閉狀態)
+   if (handoverWrapper) handoverWrapper.classList.add('hidden');
+   if (cardWrapper) cardWrapper.classList.remove('hidden');
+
+   document.getElementById('revealPlayerName').innerText = p.name;
+   const badge = document.getElementById('revealColorBadge');
+   badge.className = `w-4 h-4 rounded-full border ${pColor.dotClass} inline-block`;
+
+   document.getElementById('roleCharName').innerText = '???';
+   document.getElementById('roleCharName').className = "text-4xl font-black tracking-widest text-neutral-300 my-3 font-serif";
+   document.getElementById('revealProgressText').innerText = `進度：${G.roleRevealIdx + 1} / ${G.players.length} 位玩家`;
+
+   G.roleCardUnmasked = false;
+   const cover = document.getElementById('roleCardCover');
+   if (cover) {
+     cover.classList.remove('opacity-0', 'pointer-events-none');
+     cover.style.pointerEvents = 'auto';
+   }
+   const text = document.getElementById('roleCardText');
+   if (text) {
+     text.classList.remove('unmasked');
+     text.classList.add('mask-blur');
+   }
+   const wmBg = document.getElementById('roleCardWatermarkBg');
+   if (wmBg) {
+     wmBg.style.backgroundImage = '';
+     wmBg.classList.remove('opacity-25');
+     wmBg.classList.add('opacity-0');
+   }
+
+   const confirmBtn = document.getElementById('roleConfirmBtn');
+   if (confirmBtn) {
+     confirmBtn.disabled = true;
+     confirmBtn.className = "w-full py-3.5 bg-neutral-900 text-neutral-600 font-black text-base rounded-xl border border-neutral-800 transition cursor-not-allowed opacity-50 relative z-30";
+     confirmBtn.innerHTML = (G.roleRevealIdx === G.players.length - 1) 
+       ? '我已確認角色，全員就緒開始遊戲 ➔' 
+       : '我已確認角色，換下一位玩家 ➔';
+   }
+   _localRoleCardOpen = false;
  }
 
  const STARTER_HISTORY_KEY = 'gudong_starter_history_v1';
@@ -8277,27 +9335,43 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
  }
 
  function nextRoleReveal() {
- if (!G.roleCardUnmasked) return;
+   const confirmBtn = document.getElementById('roleConfirmBtn');
+   if (confirmBtn && confirmBtn.disabled) return;
 
- G.roleCardUnmasked = false;
- document.getElementById('roleCharName').innerText = '???';
- document.getElementById('roleCardCover').classList.remove('opacity-0', 'pointer-events-none');
- document.getElementById('roleCardText').classList.remove('unmasked');
- const wmBg = document.getElementById('roleCardWatermarkBg');
- if (wmBg) {
- wmBg.classList.remove('opacity-20');
- wmBg.classList.add('opacity-0');
- wmBg.style.backgroundImage = 'none';
- }
+   // 點擊後立即徹底清空並遮蔽卡片，確保在換人交接階段絕不會看到下家的角色
+   _localRoleCardOpen = false;
+   const charNameEl = document.getElementById('roleCharName');
+   if (charNameEl) charNameEl.innerText = '???';
+   const wmBg = document.getElementById('roleCardWatermarkBg');
+   if (wmBg) {
+     wmBg.style.backgroundImage = '';
+     wmBg.classList.remove('opacity-25');
+     wmBg.classList.add('opacity-0');
+   }
+   const cover = document.getElementById('roleCardCover');
+   if (cover) {
+     cover.classList.remove('opacity-0', 'pointer-events-none');
+     cover.style.pointerEvents = 'auto';
+   }
+   const text = document.getElementById('roleCardText');
+   if (text) {
+     text.classList.remove('unmasked');
+     text.classList.add('mask-blur');
+   }
+   if (confirmBtn) {
+     confirmBtn.disabled = true;
+     confirmBtn.className = "w-full py-3.5 bg-neutral-900 text-neutral-600 font-black text-base rounded-xl border border-neutral-800 transition cursor-not-allowed opacity-50 relative z-30";
+   }
 
- if (G.roleRevealIdx < G.players.length - 1) {
- G.roleRevealIdx++;
- saveState();
- renderRoleRevealView();
- const nextP = G.players[G.roleRevealIdx];
- const nextC = COLOR_PALETTE.find(x => x.id === nextP.colorId) || COLOR_PALETTE[0];
- speak(`${getSpokenColorName(nextC.name)}確認`);
- } else {
+   if (G.roleRevealIdx < G.players.length - 1) {
+     G.roleRevealIdx++;
+     _localRoleRevealWaitingHandover = true;
+     saveState();
+     renderRoleRevealView();
+     const nextP = G.players[G.roleRevealIdx];
+     const nextC = COLOR_PALETTE.find(x => x.id === nextP.colorId) || COLOR_PALETTE[0];
+     speak(`${getSpokenColorName(nextC.name)}確認`);
+   } else {
  let starter = null;
  if (G.forcedStarterPlayerId) {
  starter = G.players.find(p => p.id === G.forcedStarterPlayerId);
@@ -10921,8 +11995,28 @@ const inspectStr = (rData.inspect && rData.inspect.length > 0) ? rData.inspect.j
  語音功能 (Speech Synthesis)
  ============================================================ */
  function toggleVoice() {
- voiceActive = !voiceActive;
- document.getElementById('voiceBtn').innerText = voiceActive ? '🔊 語音: 開' : '🔇 語音: 關';
+   voiceActive = !voiceActive;
+   const btn = document.getElementById('voiceBtn');
+   if (btn) {
+     btn.classList.add('scale-110');
+     setTimeout(() => btn.classList.remove('scale-110'), 150);
+     if (voiceActive) {
+       btn.title = "語音朗讀：開啟 (點擊靜音)";
+       btn.innerHTML = `<svg class="w-4 h-4 text-emerald-400 transition-transform duration-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+         <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+         <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+       </svg>`;
+     } else {
+       btn.title = "語音朗讀：已靜音 (點擊開啟)";
+       btn.innerHTML = `<svg class="w-4 h-4 text-neutral-400 transition-transform duration-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+         <line x1="22" x2="16" y1="9" y2="15"></line>
+         <line x1="16" x2="22" y1="9" y2="15"></line>
+       </svg>`;
+     }
+   }
+   if (window.soundCtrl) window.soundCtrl.playClick();
  }
 
  function getColorDisplayName(colorIdOrName) {
