@@ -85,7 +85,14 @@
  -webkit-user-select: none;
  user-select: none;
  }
- /* 角色立繪淡淡浮水印背景樣式 */
+ .speech-bubble-text {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: pre-wrap !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  /* 角色立繪淡淡浮水印背景樣式 */
  .role-watermark-overlay {
  position: absolute;
  inset: 0;
@@ -183,7 +190,7 @@
  <div class="space-y-2 text-left pt-2">
  <label class="block text-xs font-bold text-neutral-300">請輸入您的遊玩暱稱：</label>
  <input type="text" id="onlInputNickname" maxlength="10" placeholder="例如：宗彥、小菜、JEO..." class="w-full text-base font-bold bg-neutral-950 border border-neutral-700 focus:border-amber-500 rounded-xl px-3.5 py-3 text-neutral-100 outline-none">
-            <p class="text-[10px] text-amber-500/90 font-medium">※ 進入大廳後，系統會自動以您暱稱中【筆畫最多的一個字】作為代表標誌！</p>
+            
           </div>
 
           <!-- 4 位數線上房間號碼輸入 -->
@@ -238,12 +245,12 @@
 
  <!-- 座位左右調整按鈕 -->
  <div class="flex justify-center items-center space-x-4 pt-1">
- <button type="button" onclick="shiftMySeat(-1)" class="px-4 py-2 bg-neutral-950 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold text-neutral-300 hover:text-amber-400 transition flex items-center space-x-1 shadow">
- <span>◀ 順時針換座</span>
+ <button type="button" onclick="shiftMySeat(1)" class="px-4 py-2 bg-neutral-950 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold text-neutral-300 hover:text-amber-400 transition flex items-center space-x-1 shadow">
+ <span>◀ 換座</span>
  </button>
  <span class="text-[11px] text-neutral-400 font-medium">調整發言順序</span>
- <button type="button" onclick="shiftMySeat(1)" class="px-4 py-2 bg-neutral-950 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold text-neutral-300 hover:text-amber-400 transition flex items-center space-x-1 shadow">
- <span>逆時針換座 ▶</span>
+ <button type="button" onclick="shiftMySeat(-1)" class="px-4 py-2 bg-neutral-950 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold text-neutral-300 hover:text-amber-400 transition flex items-center space-x-1 shadow">
+ <span>換座 ▶</span>
  </button>
  </div>
 
@@ -276,8 +283,8 @@
 
  <!-- 測試與除錯輔助 (快速填滿7位電腦玩家方便單人測試) -->
  <div class="pt-2 flex justify-between items-center text-[10px] text-neutral-500 border-t border-neutral-800/80">
- <button type="button" onclick="addMockPlayersToLobby()" class="hover:text-amber-400 underline">🧪 一鍵補齊 7 位測試玩家</button>
- <button type="button" onclick="resetOnlineRoom()" class="hover:text-rose-400 underline">🔄 重置線上房間</button>
+ <button type="button" onclick="addMockPlayersToLobby()" class="hover:text-amber-400 underline">🤖 塞滿電腦玩家</button>
+ <button type="button" onclick="closeOnlineRoom()" class="hover:text-rose-400 underline">🚪 關閉房間</button>
  </div>
 
  </div>
@@ -412,7 +419,6 @@
  <div>
  <div class="text-xs font-bold text-neutral-300 mb-1.5 flex items-center justify-between">
  <span>本回合四件獸首：</span>
- <span class="text-[10px] text-amber-500">生肖序</span>
  </div>
  <div id="onlPassiveBeastsGrid" class="grid grid-cols-4 gap-2 text-center"></div>
  </div>
@@ -454,18 +460,34 @@
  </div>
 
  </div>
- </section>
+ 
+ <!-- 依要求1：第2、3回合玩家操作時，在查看歷史戰績與勝率排行榜按鈕上方顯示前幾回合獸首投票票型與手機傳遞順序 -->
+ <div id="onlTurnPriorHistorySection" class="hidden bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-3 text-left">
+ <div class="text-xs font-bold text-neutral-300 flex items-center justify-between border-b border-neutral-800 pb-2">
+ <span class="flex items-center space-x-1.5">
+ <span>🗳️</span>
+ <span>各回合獸首投票票型（點擊獸首看攤開明細）：</span>
+ </span>
+ <span class="text-[10px] text-amber-400">前幾回合投票結果</span>
+ </div>
+ <div id="onlTurnPriorBeastsChipsContainer" class="space-y-2.5"></div>
+
+ <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+ <div class="text-xs font-bold text-neutral-300">手機傳遞順序（三回合）：</div>
+ <div id="onlTurnPriorPassOrderContainer" class="space-y-2"></div>
+ </div>
+</section>
 
  <!-- 5. 發言畫面 -->
  <!-- 5. 前往鑑寶後：發言畫面（上）與個人鑑寶投票畫面（下）合一 -->
  <section id="onlSecDiscussionVoting" class="hidden space-y-4">
 
-<!-- 【上方：逆時針發言畫面】 -->
+<!-- 【上方：順時針發言畫面】 -->
  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-3">
  <div class="flex justify-between items-center border-b border-neutral-800 pb-2">
  <h2 class="text-sm font-black text-amber-400 flex items-center space-x-1.5">
  <span>🗣️</span>
- <span>逆時針發言環節</span>
+ <span>順時針發言環節</span>
  </h2>
  <span id="onlCurrentSpeakerBadge" class="text-xs font-bold text-neutral-200">發言中：...</span>
  </div>
@@ -477,7 +499,7 @@
  <span class="animate-bounce">📢</span>
  <span>請發言：</span>
  </span>
- <span class="text-[10px] text-neutral-400 font-normal">每人本回合僅發言一次</span>
+ 
  </div>
  <textarea id="onlSpeechInputText" rows="2" placeholder="請打字輸入您的陳述、真偽推論或心理博弈..." class="w-full text-xs bg-neutral-900 border border-neutral-700 rounded-lg p-2.5 text-neutral-100 outline-none focus:border-amber-400 resize-none"></textarea>
  <button type="button" onclick="onlSubmitMySpeech()" class="w-full py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-neutral-950 font-black text-xs rounded-lg shadow transition active:scale-[0.99]">
@@ -485,29 +507,7 @@
  </button>
  </div>
 
- <!-- 發言紀錄縱向列表 (文字在圈圈左方，三輪以白色虛線分隔，白框標示發言者) -->
- <div class="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2.5">
- <div class="text-xs font-bold text-neutral-300">各回合發言記錄（文字顯示於顏色圈圈左側）：</div>
-
- <!-- 第 1 回合發言 -->
- <div class="space-y-1">
- <div id="onlSpeechListR1" class="space-y-1.5"></div>
- </div>
-
- <div class="border-t-2 border-dashed border-white/60 my-2"></div>
-
- <!-- 第 2 回合發言 -->
- <div class="space-y-1">
- <div id="onlSpeechListR2" class="space-y-1.5"></div>
- </div>
-
- <div class="border-t-2 border-dashed border-white/60 my-2"></div>
-
- <!-- 第 3 回合發言 -->
- <div class="space-y-1">
- <div id="onlSpeechListR3" class="space-y-1.5"></div>
- </div>
- </div>
+ 
 
  <!-- 發言座位圓圖 (以圓桌形式展示發言順序與當前發言者，修改3) -->
  <div id="onlDiscussionCircleSeatsWrapper" class="p-3 bg-neutral-950 border border-neutral-800 rounded-2xl text-center space-y-2 mt-3">
@@ -532,8 +532,32 @@
  </div>
  </div>
 
+ <!-- 發言紀錄縱向列表 (文字在圈圈左方，三輪以白色虛線分隔，白框標示發言者) -->
+ <div class="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2.5">
+ <div class="text-xs font-bold text-neutral-300">各回合發言記錄</div>
+
+ <!-- 第 1 回合發言 -->
+ <div class="space-y-1">
+ <div id="onlSpeechListR1" class="space-y-1.5"></div>
+ </div>
+
+ <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+
+ <!-- 第 2 回合發言 -->
+ <div class="space-y-1">
+ <div id="onlSpeechListR2" class="space-y-1.5"></div>
+ </div>
+
+ <div class="border-t-2 border-dashed border-white/60 my-2"></div>
+
+ <!-- 第 3 回合發言 -->
+ <div class="space-y-1">
+ <div id="onlSpeechListR3" class="space-y-1.5"></div>
+ </div>
+ </div>
+
  <!-- 【下方：個人鑑寶投票畫面】 -->
- <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-4">
+ <div id="onlVotingCardWrapper" class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-4">
  <div class="flex justify-between items-center border-b border-neutral-800 pb-2.5">
  <h2 class="text-sm font-black text-amber-400 flex items-center space-x-1.5">
  <span>🗳️</span>
@@ -614,6 +638,50 @@
  ✓ 鑑人投票已送出，正在等待全員完成：<span id="onlPersonVoteSubmittedProgress" class="font-mono ml-1">... (0/8)</span>
  </div>
  </div>
+
+ <!-- 依要求3：鑑人階段頁面下方顯示三局獸首投票資訊、發言欄以及傳位資訊供玩家參考 -->
+ <div id="onlPersonReferenceSection" class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl space-y-4">
+ <div class="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+ <h3 class="text-sm font-black text-amber-400 flex items-center space-x-1.5">
+ <span>📜</span>
+ <span>鑑人決策全盤歷史參考資訊</span>
+ </h3>
+ <span class="text-[10px] text-neutral-400 font-mono">前三回合完整戰況</span>
+ </div>
+
+ <!-- 1. 三局獸首投票資訊 (包含獸首卡片、籌碼與排名真偽) -->
+ <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2.5">
+ <div class="flex justify-between items-center text-xs font-bold text-neutral-200">
+ <span class="flex items-center space-x-1">
+ <span>🗳️</span>
+ <span>三局獸首投票結果與得票籌碼：</span>
+ </span>
+ <span class="text-[10px] text-neutral-400">（點擊獸首可查看票型籌碼明細）</span>
+ </div>
+ <div id="onlPersonRefBeastsChips" class="space-y-2.5"></div>
+ </div>
+
+ <!-- 2. 三局傳位資訊 (手機傳遞順序) -->
+ <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+ <div class="text-xs font-bold text-neutral-200 flex items-center space-x-1">
+ <span>📱</span>
+ <span>三回合傳位資訊（手機傳遞順序）：</span>
+ </div>
+ <div id="onlPersonRefPassOrder" class="space-y-2"></div>
+ </div>
+
+ <!-- 3. 各回合發言欄 (發言紀錄) -->
+ <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2.5">
+ <div class="flex justify-between items-center text-xs font-bold text-neutral-200">
+ <span class="flex items-center space-x-1">
+ <span>🗣️</span>
+ <span>各回合發言欄紀錄：</span>
+ </span>
+ <span class="text-[10px] text-neutral-400">（依序展示發言內容與陳述）</span>
+ </div>
+ <div id="onlPersonRefSpeechContainer" class="space-y-2.5"></div>
+ </div>
+ </div>
  </section>
 
  <!-- 8. 線上版終局全覽 (Game Over Summary) -->
@@ -631,10 +699,10 @@
  <div id="onlAllPlayerActionLogs" class="space-y-3 text-left text-xs bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 max-h-80 overflow-y-auto"></div>
 
  <div class="pt-2 flex justify-between space-x-2">
- <button onclick="resetOnlineRoom()" class="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs rounded-xl border border-neutral-700 transition">
- 🔄 重置房間並回大廳
+ <button id="btnOnlGameOverRestart" type="button" onclick="onlClickGameOverRestartReady()" class="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-[0.99]">
+ 重新開始一局 (0/8)
  </button>
- <button onclick="selectAppMode('mode_picker')" class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl transition">
+ <button id="btnOnlGameOverModePicker" type="button" onclick="onlClickGameOverModePicker()" class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl transition active:scale-[0.99]">
  返回模式選擇
  </button>
  </div>
@@ -658,7 +726,7 @@
  </div>
 
  <!-- ================= 階段 1：遊戲設定 (SETUP) ================= -->
- <section id="secSetup" class="space-y-4">
+ <section id="secSetup" class="hidden space-y-4">
  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-xl">
  <h2 class="text-lg font-black text-amber-400 mb-1 flex items-center">
  遊戲人數與玩家設定
@@ -1436,6 +1504,31 @@ function checkWatermarkUploadedState() {
     let onlSelectedPassNextId = null;
     let onlMyVoteMap = {};
     let onlSelectedPersonTargetId = null;
+    let _lastAutoScrolledVotingRound = -1;
+    let _hasAutoScrolledPersonVoting = false;
+
+    function autoScrollToVotingStageIfNeeded(room) {
+      if (!room || room.status !== 'voting') return;
+      const curRIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+      if (_lastAutoScrolledVotingRound !== curRIdx) {
+        _lastAutoScrolledVotingRound = curRIdx;
+        setTimeout(() => {
+          const target = document.getElementById('onlVotingCardWrapper') || document.getElementById('onlVotingSectionHeaderTitle');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 150);
+      }
+    }
+
+    function autoScrollToTopForPersonVoting() {
+      if (!_hasAutoScrolledPersonVoting) {
+        _hasAutoScrolledPersonVoting = true;
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 80);
+      }
+    }
     let onlTempLaoActive = false;
     let onlTempZhengBlock = null;
     let onlYaoTargetId = null;
@@ -1444,6 +1537,7 @@ function checkWatermarkUploadedState() {
     let onlMyInspectedBeastsInTurn = [];
     let _lobbyCountdownTimer = null;
     let _lobbyCountdownVal = 3;
+    let _lobbyCountdownPendingStart = false;
     let _hasEverJoinedLobby = false;
     let _lastSeenOnlineStatus = null;
     let _lastSeenOnlineGameStart = null;
@@ -1478,6 +1572,9 @@ function checkWatermarkUploadedState() {
  let currentAppMode = 'mode_picker'; // 'mode_picker' | 'local' | 'online'
 
  function selectAppMode(mode) {
+      window._isViewingGameOver = false;
+      window._hasRenderedGameOver = false;
+      window._cachedGameOverData = null;
       currentAppMode = mode;
       try {
         sessionStorage.setItem('gudong_selected_app_mode', mode);
@@ -1551,15 +1648,52 @@ function checkWatermarkUploadedState() {
       selectAppMode('mode_picker');
     }
 
+        function resetLocalGameToLobby() {
+      clearAllCookies();
+      localStorage.removeItem(STORAGE_KEY);
+      const banner = document.getElementById('restoreBanner');
+      if (banner) banner.classList.add('hidden');
+      G.step = 'setup';
+      G.rounds = [];
+      G.currentRoundIdx = 0;
+      G.starterPlayerId = null;
+      G.forcedStarterPlayerId = null;
+      G.lastPlayerIdOfRound = null;
+      G.activePlayerId = null;
+      G.inspectedPlayerIds = [];
+      G.blockedBeastThisRound = null;
+      G.blockedBeastPositionThisRound = null;
+      G.laoChaoFengActiveThisRound = false;
+      G.inspectedBeastsInTurn = [];
+      G.turnSubStep = 'a';
+      G.pendingNextPlayerId = null;
+      G.abilityLockedInCurrentTurn = false;
+      G.yaoSelectedTargetId = null;
+      G.fangZhenSelectedTargetId = null;
+      G.fangZhenRevealedCamp = null;
+      G.roleRevealIdx = 0;
+      G.actionLogs = {};
+      G.personVotes = {};
+      G.gameOverData = null;
+      G.playerCount = 8;
+      syncPlayersFromMaster();
+      renderAll();
+      // 依要求3：古董局中局小幫手模式在按下重新開局，確認後即會刪除當局數據資料，並回到選擇模式的畫面
+      selectAppMode('mode_picker');
+    }
+    window.resetLocalGameToLobby = resetLocalGameToLobby;
+
     async function handleHeaderResetClick() {
       if (currentAppMode === 'local') {
-        if (confirm('確定要結束當前單機對局並重新開局嗎？將直接返回請選擇遊玩模式頁面。')) {
-          clearAllCookies();
-          localStorage.removeItem(STORAGE_KEY);
-          try { sessionStorage.removeItem('gudong_selected_app_mode'); } catch(e) {}
-          selectAppMode('mode_picker');
+        if (confirm('確定要結束當前對局並重新開局嗎？將立即刪除當局數據資料，並回到選擇模式的畫面。')) {
+          resetLocalGameToLobby();
         }
+        return;
       } else if (currentAppMode === 'online') {
+        if (onlineRoomData && onlineRoomData.status === 'gameover') {
+          onlClickGameOverRestartReady();
+          return;
+        }
         const room = onlineRoomData;
         const otherPlayers = (room && room.players) ? room.players.filter(p => p.id !== myOnlinePlayerId) : [];
         const remainingHumans = otherPlayers.filter(p => p.id && !p.id.startsWith('mock_p_'));
@@ -1731,6 +1865,7 @@ function checkWatermarkUploadedState() {
  roomId: currentOnlineRoomCode || '8888',
  status: 'waiting', // waiting | roles | playing | discussion | voting | person_voting | gameover
  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+ lastActivityTime: Date.now(),
  startTimestamp: null,
  players: [],
  rounds: [],
@@ -1747,181 +1882,491 @@ function checkWatermarkUploadedState() {
 // ============================================================
  // 線上版重新開局全場投票表決 (需 5 票以上同意)
  // ============================================================
- async function onlInitiateRestartVote() {
-      if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
-      const room = onlineRoomData;
-      const myName = myOnlinePlayerName || '玩家';
-      const votes = { [myOnlinePlayerId]: true };
+  // 線上版重新開局與關閉房間表決 (真人過半數同意即執行)
+  // ============================================================
+  async function resetOnlineRoomToWaitingLobby(room) {
+    if (!isFirebaseReady || !db) return;
+    const modal = document.getElementById('onlRestartVoteModal');
+    if (modal) modal.classList.add('hidden');
+    resetAllOnlineClientState();
 
-      // 依要求：有玩家發起重新開局時，虛擬角色一律強制按同意！
-      (room.players || []).forEach(p => {
-        if (p.id && p.id.startsWith('mock_p_')) {
-          votes[p.id] = true;
-        }
-      });
+    const updatedPlayers = (room.players || []).map(p => ({
+      ...p,
+      readyToStart: false,
+      role: null,
+      roleConfirmed: false,
+      isAmbushed: false,
+      isPermanentlyAmbushed: false,
+      inspectHistory: [],
+      abilityHistory: [],
+      confusedRound: null
+    }));
 
-      const yesCount = Object.values(votes).filter(v => v === true).length;
+    await db.doc(ONLINE_ROOM_DOC).update({
+      status: 'waiting',
+      players: updatedPlayers,
+      rounds: [],
+      currentRoundIdx: 0,
+      currentTurnPlayerId: null,
+      currentSpeakerId: null,
+      lastCalculatedResult: null,
+      gameOverData: null,
+      restartVoteData: null,
+      closeVoteData: null,
+      waitingSince: Date.now(),
+      lastActivityTime: Date.now()
+    });
+    resetAllOnlineClientState();
+  }
+  window.resetOnlineRoomToWaitingLobby = resetOnlineRoomToWaitingLobby;
 
-      // 若達到 5 票同意（例如真人發起 + 虛擬角色已達 5 票）：立即強制停止所有遊戲並重置！
-      if (yesCount >= 5) {
-        try {
-          // 1. 重置當前 4 位數房間
-          await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
-          // 2. 同步強制重置舊版 active_room，確保舊局徹底停止！
-          try {
-            await initEmptyRoomDoc(db.doc('GudongOnlineGame/active_room'));
-          } catch(e) {}
-        } catch(e) {
-          console.error('強制重置線上房間失敗:', e);
-        }
-        clearAllCookies();
-        resetAllOnlineClientState();
-        selectAppMode('mode_picker');
-        return;
+  async function onlInitiateRestartVote() {
+    if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+    const room = onlineRoomData;
+    const myName = myOnlinePlayerName || '玩家';
+    const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+    const totalHumans = humanPlayers.length;
+
+    // 若房內只有一位真人，直接重新開局回到大廳
+    if (totalHumans <= 1) {
+      if (confirm('確定要重新開局嗎？將立即清空對局資料並返回大廳。')) {
+        await resetOnlineRoomToWaitingLobby(room);
       }
-
-      const restartData = {
-        initiatorId: myOnlinePlayerId,
-        initiatorName: myName,
-        votes: votes,
-        createdAt: Date.now()
-      };
-      await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: restartData });
+      return;
     }
 
-    async function onlCastRestartVote(agree) {
-      if (!onlineRoomData || !onlineRoomData.restartVoteData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
-      const vData = onlineRoomData.restartVoteData;
-      if (!vData.votes) vData.votes = {};
-      vData.votes[myOnlinePlayerId] = agree;
+    const restartData = {
+      initiatorId: myOnlinePlayerId,
+      initiatorName: myName,
+      votes: { [myOnlinePlayerId]: true },
+      createdAt: Date.now()
+    };
+    await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: restartData });
+  }
+  window.onlInitiateRestartVote = onlInitiateRestartVote;
 
-      // 虛擬角色強制同意
-      (onlineRoomData.players || []).forEach(p => {
-        if (p.id && p.id.startsWith('mock_p_')) {
-          vData.votes[p.id] = true;
-        }
-      });
+  async function onlCastRestartVote(agree) {
+    if (!onlineRoomData || !onlineRoomData.restartVoteData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+    const room = onlineRoomData;
+    const vData = room.restartVoteData;
+    if (!vData.votes) vData.votes = {};
+    vData.votes[myOnlinePlayerId] = agree;
 
-      const yesCount = Object.values(vData.votes).filter(v => v === true).length;
-      const noCount = Object.values(vData.votes).filter(v => v === false).length;
+    const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+    const totalHumans = humanPlayers.length;
+    const yesCount = humanPlayers.filter(p => vData.votes && vData.votes[p.id] === true).length;
+    const noCount = humanPlayers.filter(p => vData.votes && vData.votes[p.id] === false).length;
 
-      // 滿 5 票同意：全體強制停止遊戲，回到模式選擇大門！
-      if (yesCount >= 5) {
-        try {
-          await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
-          try {
-            await initEmptyRoomDoc(db.doc('GudongOnlineGame/active_room'));
-          } catch(e) {}
-        } catch(e) {}
-        clearAllCookies();
-        resetAllOnlineClientState();
-        selectAppMode('mode_picker');
-        return;
-      }
-
-      if (noCount >= 4) {
-        await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: null });
-        return;
-      }
-
-      await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: vData });
+    // 依要求1：有四票即可，顯示改成0/4，要能夠重新開局
+    if (yesCount >= 4) {
+      await resetOnlineRoomToWaitingLobby(room);
+      return;
     }
 
-    let _restartVoteInterval = null;
-    let _isTimeoutResetting = false;
+    if (noCount >= Math.ceil(totalHumans / 2)) {
+      await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: null });
+      return;
+    }
 
-    async function forceTimeoutResetOnlineGame() {
-      if (_isTimeoutResetting) return;
-      _isTimeoutResetting = true;
+    await db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: vData });
+  }
+  window.onlCastRestartVote = onlCastRestartVote;
+
+  let _restartVoteInterval = null;
+  function checkAndRenderRestartVoteModal(room) {
+    const modal = document.getElementById('onlRestartVoteModal');
+    if (!modal) return;
+
+    if (room && room.status === 'gameover') {
+      modal.classList.add('hidden');
+      return;
+    }
+
+    if (!room || !room.restartVoteData) {
+      modal.classList.add('hidden');
+      if (_restartVoteInterval) {
+        clearInterval(_restartVoteInterval);
+        _restartVoteInterval = null;
+      }
+      return;
+    }
+
+    const vData = room.restartVoteData;
+    const createdAt = vData.createdAt || Date.now();
+    const elapsed = Date.now() - createdAt;
+
+    if (elapsed >= 60000) {
+      if (db && isFirebaseReady) {
+        db.doc(ONLINE_ROOM_DOC).update({ restartVoteData: null });
+      }
+      modal.classList.add('hidden');
+      return;
+    }
+
+    const votes = vData.votes || {};
+    const yesCount = Object.values(votes).filter(v => v === true).length;
+    const noCount = Object.values(votes).filter(v => v === false).length;
+
+    // 依要求1：達 4 票即可重新開局
+    if (yesCount >= 4) {
+      modal.classList.add('hidden');
+      resetOnlineRoomToWaitingLobby(room);
+      return;
+    }
+
+    const titleEl = document.getElementById('onlRestartModalTitle');
+    if (titleEl) titleEl.innerText = `【${vData.initiatorName}】提議重新開局`;
+    const yesEl = document.getElementById('onlRestartYesCount');
+    if (yesEl) yesEl.innerText = `${yesCount} / 4`;
+    const noEl = document.getElementById('onlRestartNoCount');
+    if (noEl) noEl.innerText = `${noCount}`;
+
+    const btns = document.getElementById('onlRestartVoteActionBtns');
+    const tip = document.getElementById('onlRestartVotedTip');
+
+    if (votes[myOnlinePlayerId] !== undefined) {
+      if (btns) btns.classList.add('hidden');
+      if (tip) tip.classList.remove('hidden');
+    } else {
+      if (btns) btns.classList.remove('hidden');
+      if (tip) tip.classList.add('hidden');
+    }
+
+    const tipEl = document.getElementById('onlRestartTimeoutTip');
+    const remainSec = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
+    if (tipEl) tipEl.innerText = `⏱️ 表決倒數 ${remainSec} 秒（若超時未決將自動取消提議）`;
+
+    modal.classList.remove('hidden');
+  }
+
+  // ==========================================
+  // 關閉房間全場表決與直接關閉
+  // ==========================================
+  async function closeOnlineRoom() {
+    if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+    const room = onlineRoomData;
+    const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+    const totalHumans = humanPlayers.length;
+    const roomCode = currentOnlineRoomCode || '8888';
+
+    if (totalHumans <= 1) {
+      if (!confirm(`確定要關閉房間【${roomCode}】嗎？`)) return;
       try {
-        if (_restartVoteInterval) {
-          clearInterval(_restartVoteInterval);
-          _restartVoteInterval = null;
-        }
-        const modal = document.getElementById('onlRestartVoteModal');
-        if (modal) modal.classList.add('hidden');
+        await db.doc(ONLINE_ROOM_DOC).update({
+          status: 'closed',
+          closedMessage: `【${roomCode}】房間已被關閉`
+        });
+        setTimeout(async () => {
+          try { await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC)); } catch(e) {}
+        }, 1200);
+      } catch(e) {}
+      alert(`【${roomCode}】房間已被關閉`);
+      clearAllCookies();
+      resetAllOnlineClientState();
+      selectAppMode('mode_picker');
+      return;
+    }
 
-        if (isFirebaseReady && db) {
-          await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
-          try {
-            await initEmptyRoomDoc(db.doc('GudongOnlineGame/active_room'));
-          } catch(e) {}
+    // 多位真人玩家，發起關閉房間投票
+    const closeData = {
+      initiatorId: myOnlinePlayerId,
+      initiatorName: myOnlinePlayerName || '玩家',
+      votes: { [myOnlinePlayerId]: true },
+      createdAt: Date.now()
+    };
+    await db.doc(ONLINE_ROOM_DOC).update({ closeVoteData: closeData });
+  }
+  window.closeOnlineRoom = closeOnlineRoom;
+
+  // 依最新要求：線上版對局最終結果改回在房間內觀看，重新開始一局(0/8)全員按下立即重製同號房間，點模式選擇離開並連動分母(0/7)
+  function updateGameOverRestartButton(room, me) {
+    const restartBtn = document.getElementById('btnOnlGameOverRestart');
+    if (!restartBtn) return;
+    const players = room.players || [];
+    const totalPlayers = players.length;
+    const votes = room.gameOverRestartVotes || {};
+    const readyCount = players.filter(p => votes[p.id] === true).length;
+    const isMyVoted = !!votes[myOnlinePlayerId];
+
+    restartBtn.innerText = `重新開始一局 (${readyCount}/${totalPlayers})`;
+    if (isMyVoted) {
+      restartBtn.disabled = true;
+      restartBtn.className = "flex-1 py-3 bg-emerald-700 text-neutral-100 font-bold text-xs rounded-xl border border-emerald-500/80 transition cursor-default opacity-90";
+    } else {
+      restartBtn.disabled = false;
+      restartBtn.className = "flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-[0.99] cursor-pointer";
+    }
+  }
+  window.updateGameOverRestartButton = updateGameOverRestartButton;
+
+  async function onlClickGameOverRestartReady() {
+    if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+    const room = onlineRoomData;
+    const docRef = db.doc(ONLINE_ROOM_DOC);
+
+    // 1. 本地樂觀即時鎖定按鈕並更新數字 (不另外跳出視窗)
+    const restartBtn = document.getElementById('btnOnlGameOverRestart');
+    if (restartBtn) {
+      restartBtn.disabled = true;
+      const currentTotal = (room.players || []).length;
+      const curVotes = room.gameOverRestartVotes || {};
+      const curReady = Object.values(curVotes).filter(v => v === true).length + (curVotes[myOnlinePlayerId] ? 0 : 1);
+      restartBtn.innerText = `重新開始一局 (${curReady}/${currentTotal})`;
+      restartBtn.className = "flex-1 py-3 bg-emerald-700 text-neutral-100 font-bold text-xs rounded-xl border border-emerald-500/80 transition cursor-default opacity-90";
+    }
+
+    // 2. 雲端原子交易更新
+    try {
+      await db.runTransaction(async (transaction) => {
+        const snap = await transaction.get(docRef);
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (data.status !== 'gameover') return;
+
+        let players = data.players || [];
+        let votes = data.gameOverRestartVotes ? { ...data.gameOverRestartVotes } : {};
+        votes[myOnlinePlayerId] = true;
+
+        // 若有電腦玩家，自動標記為已準備
+        players.forEach(p => {
+          if (p.id.startsWith('mock_p_')) {
+            votes[p.id] = true;
+          }
+        });
+
+        const totalCount = players.length;
+        const readyCount = players.filter(p => votes[p.id] === true).length;
+
+        // 當所有人均按下按鈕後，立即重製房間（號碼一樣，不另外跳出視窗）
+        if (readyCount >= totalCount && totalCount > 0) {
+          const updatedPlayers = players.map(p => ({
+            ...p,
+            readyToStart: false,
+            role: '',
+            roleConfirmed: false,
+            isAmbushed: false,
+            isPermanentlyAmbushed: false,
+            inspectHistory: [],
+            abilityHistory: [],
+            confusedRound: null
+          }));
+
+          transaction.update(docRef, {
+            status: 'waiting',
+            players: updatedPlayers,
+            rounds: [],
+            currentRoundIdx: 0,
+            currentTurnPlayerId: null,
+            currentSpeakerId: null,
+            lastCalculatedResult: null,
+            gameOverData: null,
+            gameOverRestartVotes: {},
+            restartVoteData: null,
+            closeVoteData: null,
+            waitingSince: Date.now(),
+            lastActivityTime: Date.now()
+          });
+        } else {
+          transaction.update(docRef, {
+            gameOverRestartVotes: votes,
+            lastActivityTime: Date.now()
+          });
         }
-        clearAllCookies();
-        resetAllOnlineClientState();
-        alert('⏱️ 重新開局表決超過 1 分鐘未決，系統已自動強制關閉本局並清空房間資料！');
-        selectAppMode('mode_picker');
+      });
+    } catch(e) {
+      console.error('投出重開一局準備票失敗:', e);
+    }
+  }
+  window.onlClickGameOverRestartReady = onlClickGameOverRestartReady;
+  window.handleGameOverReturnToLobby = onlClickGameOverRestartReady;
+  window.resetOnlineRoom = onlClickGameOverRestartReady;
+
+  async function onlClickGameOverModePicker() {
+    const docRef = (isFirebaseReady && db) ? db.doc(ONLINE_ROOM_DOC) : null;
+    const leavingPlayerId = myOnlinePlayerId;
+
+    // 1. 本地立即回到模式選擇頁面 (真的回到選擇模式頁面)
+    window._currentGameOverRenderedId = null;
+    selectAppMode('mode_picker');
+
+    // 2. 雲端原子交易：將該玩家移出房間並清理其投票，連動影響剩餘玩家之顯示按鈕 (例如 0/7)
+    if (docRef && leavingPlayerId) {
+      try {
+        await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(docRef);
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.status !== 'gameover') return;
+
+          let players = (data.players || []).filter(p => p.id !== leavingPlayerId);
+          let votes = data.gameOverRestartVotes ? { ...data.gameOverRestartVotes } : {};
+          delete votes[leavingPlayerId];
+
+          const totalCount = players.length;
+          if (totalCount === 0) {
+            transaction.set(docRef, {
+              roomId: currentOnlineRoomCode || '8888',
+              status: 'waiting',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastActivityTime: Date.now(),
+              startTimestamp: null,
+              players: [],
+              rounds: [],
+              currentRoundIdx: 0,
+              currentTurnPlayerId: null,
+              currentSpeakerId: null,
+              lastCalculatedResult: null
+            });
+            return;
+          }
+
+          const readyCount = players.filter(p => votes[p.id] === true).length;
+
+          // 若剩餘所有人皆已按過重開按鈕，立即重製房間回大廳
+          if (readyCount >= totalCount && totalCount > 0) {
+            const updatedPlayers = players.map(p => ({
+              ...p,
+              readyToStart: false,
+              role: '',
+              roleConfirmed: false,
+              isAmbushed: false,
+              isPermanentlyAmbushed: false,
+              inspectHistory: [],
+              abilityHistory: [],
+              confusedRound: null
+            }));
+
+            transaction.update(docRef, {
+              status: 'waiting',
+              players: updatedPlayers,
+              rounds: [],
+              currentRoundIdx: 0,
+              currentTurnPlayerId: null,
+              currentSpeakerId: null,
+              lastCalculatedResult: null,
+              gameOverData: null,
+              gameOverRestartVotes: {},
+              restartVoteData: null,
+              closeVoteData: null,
+              waitingSince: Date.now(),
+              lastActivityTime: Date.now()
+            });
+          } else {
+            transaction.update(docRef, {
+              players: players,
+              gameOverRestartVotes: votes,
+              lastActivityTime: Date.now()
+            });
+          }
+        });
       } catch(e) {
-        console.error('超時強制重置失敗:', e);
-      } finally {
-        _isTimeoutResetting = false;
+        console.error('退出房間更新剩餘玩家失敗:', e);
       }
     }
-    window.forceTimeoutResetOnlineGame = forceTimeoutResetOnlineGame;
+  }
+  window.onlClickGameOverModePicker = onlClickGameOverModePicker;
+  window.handleGameOverReturnToModePicker = onlClickGameOverModePicker;
 
-    function checkAndRenderRestartVoteModal(room) {
-      const modal = document.getElementById('onlRestartVoteModal');
-      if (!modal) return;
+  async function onlCastCloseVote(agree) {
+    if (!onlineRoomData || !onlineRoomData.closeVoteData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+    const room = onlineRoomData;
+    const vData = room.closeVoteData;
+    if (!vData.votes) vData.votes = {};
+    vData.votes[myOnlinePlayerId] = agree;
 
-      if (!room || !room.restartVoteData) {
-        modal.classList.add('hidden');
-        if (_restartVoteInterval) {
-          clearInterval(_restartVoteInterval);
-          _restartVoteInterval = null;
-        }
-        return;
-      }
+    const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+    const totalHumans = humanPlayers.length;
+    const yesCount = humanPlayers.filter(p => vData.votes && vData.votes[p.id] === true).length;
+    const noCount = humanPlayers.filter(p => vData.votes && vData.votes[p.id] === false).length;
 
-      const vData = room.restartVoteData;
-      const createdAt = vData.createdAt || Date.now();
-      const elapsed = Date.now() - createdAt;
-
-      // 依要求：若該局停在重新開局投票階段超過一分鐘 (60秒)，強制關閉開局並清除資料
-      if (elapsed >= 60000) {
-        forceTimeoutResetOnlineGame();
-        return;
-      }
-
-      const votes = vData.votes || {};
-      const yesCount = Object.values(votes).filter(v => v === true).length;
-      const noCount = Object.values(votes).filter(v => v === false).length;
-
-      document.getElementById('onlRestartModalTitle').innerText = `【${vData.initiatorName}】提議重新開局`;
-      document.getElementById('onlRestartYesCount').innerText = `${yesCount} / 8`;
-      document.getElementById('onlRestartNoCount').innerText = `${noCount}`;
-
-      const btns = document.getElementById('onlRestartVoteActionBtns');
-      const tip = document.getElementById('onlRestartVotedTip');
-
-      if (votes[myOnlinePlayerId] !== undefined) {
-        btns.classList.add('hidden');
-        tip.classList.remove('hidden');
-      } else {
-        btns.classList.remove('hidden');
-        tip.classList.add('hidden');
-      }
-
-      // 倒數計時即時顯示在彈窗上
-      const tipEl = document.getElementById('onlRestartTimeoutTip');
-      const updateRemainText = () => {
-        const curElapsed = Date.now() - (vData.createdAt || Date.now());
-        if (curElapsed >= 60000) {
-          forceTimeoutResetOnlineGame();
-          return;
-        }
-        const remainSec = Math.max(0, Math.ceil((60000 - curElapsed) / 1000));
-        if (tipEl) tipEl.innerText = `⏱️ 表決倒數 ${remainSec} 秒（超過 1 分鐘未決將自動強制關閉本局並清空資料）`;
-      };
-      updateRemainText();
-
-      if (!_restartVoteInterval) {
-        _restartVoteInterval = setInterval(updateRemainText, 1000);
-      }
-
-      modal.classList.remove('hidden');
+    // 依要求7：若超過真人玩家數量超過一半人數按下是，則立即關閉房間，提示"房號"房間已被關閉
+    if (yesCount > totalHumans / 2) {
+      const roomCode = currentOnlineRoomCode || '8888';
+      await db.doc(ONLINE_ROOM_DOC).update({
+        status: 'closed',
+        closedMessage: `【${roomCode}】房間已被關閉`
+      });
+      setTimeout(async () => {
+        try { await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC)); } catch(e) {}
+      }, 1200);
+      return;
     }
 
-    function resetAllOnlineClientState() {
+    if (noCount >= Math.ceil(totalHumans / 2)) {
+      await db.doc(ONLINE_ROOM_DOC).update({ closeVoteData: null });
+      return;
+    }
+
+    await db.doc(ONLINE_ROOM_DOC).update({ closeVoteData: vData });
+  }
+  window.onlCastCloseVote = onlCastCloseVote;
+
+  let _closeVoteInterval = null;
+  function checkAndRenderCloseVoteModal(room) {
+    const modal = document.getElementById('onlCloseVoteModal');
+    if (!modal) return;
+
+    if (!room || !room.closeVoteData) {
+      modal.classList.add('hidden');
+      if (_closeVoteInterval) {
+        clearInterval(_closeVoteInterval);
+        _closeVoteInterval = null;
+      }
+      return;
+    }
+
+    const vData = room.closeVoteData;
+    const createdAt = vData.createdAt || Date.now();
+    const elapsed = Date.now() - createdAt;
+
+    if (elapsed >= 60000) {
+      if (db && isFirebaseReady) {
+        db.doc(ONLINE_ROOM_DOC).update({ closeVoteData: null });
+      }
+      modal.classList.add('hidden');
+      return;
+    }
+
+    const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+    const totalHumans = humanPlayers.length;
+    const votes = vData.votes || {};
+    const yesCount = humanPlayers.filter(p => votes[p.id] === true).length;
+    const noCount = humanPlayers.filter(p => votes[p.id] === false).length;
+
+    const titleEl = document.getElementById('onlCloseModalTitle');
+    if (titleEl) titleEl.innerText = `【${vData.initiatorName}】提議關閉房間`;
+    const yesEl = document.getElementById('onlCloseYesCount');
+    if (yesEl) yesEl.innerText = `${yesCount} / ${totalHumans}`;
+    const noEl = document.getElementById('onlCloseNoCount');
+    if (noEl) noEl.innerText = `${noCount}`;
+
+    const btns = document.getElementById('onlCloseVoteActionBtns');
+    const tip = document.getElementById('onlCloseVotedTip');
+
+    if (votes[myOnlinePlayerId] !== undefined) {
+      if (btns) btns.classList.add('hidden');
+      if (tip) tip.classList.remove('hidden');
+    } else {
+      if (btns) btns.classList.remove('hidden');
+      if (tip) tip.classList.add('hidden');
+    }
+
+    const tipEl = document.getElementById('onlCloseTimeoutTip');
+    const remainSec = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
+    if (tipEl) tipEl.innerText = `⏱️ 表決倒數 ${remainSec} 秒（若超時未決將自動取消提議）`;
+
+    modal.classList.remove('hidden');
+  }
+
+  // 保持 forceTimeoutResetOnlineGame 向下相容
+  function forceTimeoutResetOnlineGame() {
+    clearAllCookies();
+    resetAllOnlineClientState();
+    selectAppMode('mode_picker');
+  }
+  window.forceTimeoutResetOnlineGame = forceTimeoutResetOnlineGame;
+
+  function resetAllOnlineClientState() {
  onlMyInspectedBeastsInTurn = [];
  onlSelectedInspectBeast = null;
  onlSelectedPassNextId = null;
@@ -1932,6 +2377,9 @@ function checkWatermarkUploadedState() {
  onlMyVoteMap = {};
  onlCollapsedRoundsMap = {};
  window._lastSeenOnlineRound = null;
+      _lastAutoScrolledVotingRound = -1;
+      _hasAutoScrolledPersonVoting = false;
+      onlSelectedPersonTargetId = null;
 
  const rb = document.getElementById('onlAppraiseResultBox');
  if (rb) rb.classList.add('hidden');
@@ -1950,6 +2398,56 @@ function checkWatermarkUploadedState() {
  function handleOnlineRoomUpdate(room) {
     if (!room) return;
 
+    // 檢查房間是否被關閉 (依要求7：若超過半數同意或關閉房間，提示"房號"房間已被關閉)
+    if (room.status === 'closed' || room.closedMessage) {
+      const msg = room.closedMessage || `【${currentOnlineRoomCode || '8888'}】房間已被關閉`;
+      alert(msg);
+      clearAllCookies();
+      resetAllOnlineClientState();
+      selectAppMode('mode_picker');
+      return;
+    }
+
+    // 依要求7：若開局超過五分鐘未開始，即強制關閉房間，頁面會提示房間已超時五分鐘未開始
+    if (room.status === 'waiting') {
+      const wTime = room.waitingSince || (room.createdAt ? (room.createdAt.toMillis ? room.createdAt.toMillis() : (typeof room.createdAt === 'number' ? room.createdAt : null)) : null);
+      if (wTime && typeof wTime === 'number' && (Date.now() - wTime >= 5 * 60 * 1000)) {
+        alert('⏱️ 房間已超時五分鐘未開始');
+        try {
+          if (isFirebaseReady && db) {
+            initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
+          }
+        } catch(e) {}
+        clearAllCookies();
+        resetAllOnlineClientState();
+        selectAppMode('mode_picker');
+        return;
+      }
+    }
+
+    // 依要求1：若該局超過 29 分鐘沒人動作，強制關閉房間 (29 分鐘 = 1740000 毫秒)
+    const INACTIVE_TIMEOUT_MS = 29 * 60 * 1000;
+    const now = Date.now();
+    let lastActionTime = room.lastActivityTime;
+    if (!lastActionTime && room.createdAt) {
+      lastActionTime = room.createdAt.toMillis ? room.createdAt.toMillis() : (typeof room.createdAt === 'number' ? room.createdAt : null);
+    }
+    if (!lastActionTime && room.startTimestamp) {
+      lastActionTime = room.startTimestamp;
+    }
+
+    if (lastActionTime && (now - lastActionTime > INACTIVE_TIMEOUT_MS)) {
+      console.warn('⚠️ 該房間已超過 29 分鐘無任何動作，強制關閉並清空資料');
+      if (isFirebaseReady && db) {
+        initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
+      }
+      clearAllCookies();
+      resetAllOnlineClientState();
+      alert('⚠️ 該線上房間已超過 29 分鐘無任何動作，系統已強制關閉並刪除房間！');
+      selectAppMode('mode_picker');
+      return;
+    }
+
     // 依要求：若該房間無真人玩家（例如全員離線、僅剩虛擬角色），立即關閉該房間並刪除清空資料！
     if (room.players && room.players.length > 0) {
       const humanPlayers = room.players.filter(p => p.id && !p.id.startsWith('mock_p_'));
@@ -1965,12 +2463,7 @@ function checkWatermarkUploadedState() {
     onlineRoomData = room;
 
     checkAndRenderRestartVoteModal(room);
-    if (room && room.restartVoteData && room.restartVoteData.createdAt) {
-      if (Date.now() - room.restartVoteData.createdAt >= 60000) {
-        forceTimeoutResetOnlineGame();
-        return;
-      }
-    }
+    checkAndRenderCloseVoteModal(room);
 
     // 偵測全新對局啟動或房間處於大廳等待時，自動清空瀏覽器殘留資料
     if (room.status === 'waiting' || (room.startTimestamp && window._lastSeenOnlineGameStart !== room.startTimestamp)) {
@@ -1978,8 +2471,26 @@ function checkWatermarkUploadedState() {
       resetAllOnlineClientState();
     }
     // 偵測輪次推進時重置本地查驗與投票狀態
+        // 依要求5：進入發言環節後會先自動收合前幾回合發言，當前輪預設展開
+    if (room.status === 'discussion') {
+      const curRIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+      if (window._lastSeenOnlineStatus !== 'discussion' || window._lastSeenOnlineRound !== room.currentRoundIdx) {
+        onlCollapsedRoundsMap = {};
+        for (let r = 1; r <= 3; r++) {
+          if (r - 1 < curRIdx) {
+            onlCollapsedRoundsMap[r] = true;  // 前幾回合自動收合
+          } else {
+            onlCollapsedRoundsMap[r] = false; // 當前輪展開
+          }
+        }
+      }
+    }
+    window._lastSeenOnlineStatus = room.status;
+
     if (window._lastSeenOnlineRound !== room.currentRoundIdx) {
       window._lastSeenOnlineRound = room.currentRoundIdx;
+      _lastAutoScrolledVotingRound = -1;
+      _hasAutoScrolledPersonVoting = false;
       onlMyInspectedBeastsInTurn = [];
       onlSelectedInspectBeast = null;
       onlSelectedPassNextId = null;
@@ -2021,6 +2532,16 @@ function checkWatermarkUploadedState() {
     const players = room.players || [];
     let me = players.find(p => p.id === myOnlinePlayerId);
 
+    // 關鍵修復：若當前裝置重整或開新分頁導致 myOnlinePlayerId 未比對成功，以暱稱自動找回實體玩家身分，避免玩家變成無角色
+    if (!me && myOnlinePlayerName) {
+      const existingHuman = players.find(p => p.name === myOnlinePlayerName && !p.id.startsWith('mock_p_'));
+      if (existingHuman) {
+        myOnlinePlayerId = existingHuman.id;
+        try { sessionStorage.setItem('gudong_online_my_id', myOnlinePlayerId); } catch(e) {}
+        me = existingHuman;
+      }
+    }
+
     // 若使用者尚未入座且房間處於 waiting，在背景自動加入，絕不阻擋 UI 渲染！
     if (!me && room.status === 'waiting') {
       if (players.length < 8) {
@@ -2028,8 +2549,49 @@ function checkWatermarkUploadedState() {
       }
     }
 
+    // 依要求：若房間已進入遊戲階段 (roles, playing, discussion, voting, person_voting, gameover)，檢測並確保 8 位玩家皆有角色且不重複
+    if (room.status && room.status !== 'waiting' && Array.isArray(room.players)) {
+      const ALL_8_ROLES = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'];
+      let roleFixNeeded = false;
+      const assigned = new Set();
+      const needsRolePlayers = [];
+
+      room.players.forEach(p => {
+        if (!p.role || assigned.has(p.role) || !ALL_8_ROLES.includes(p.role)) {
+          needsRolePlayers.push(p);
+          roleFixNeeded = true;
+        } else {
+          assigned.add(p.role);
+        }
+      });
+
+      if (roleFixNeeded) {
+        console.warn('偵測到有玩家無角色或角色重複，啟動自動隨機分派修復機制！');
+        const unassignedRoles = ALL_8_ROLES.filter(r => !assigned.has(r));
+        for (let i = unassignedRoles.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [unassignedRoles[i], unassignedRoles[j]] = [unassignedRoles[j], unassignedRoles[i]];
+        }
+        needsRolePlayers.forEach((p, i) => {
+          if (i < unassignedRoles.length) {
+            p.role = unassignedRoles[i];
+            assigned.add(p.role);
+            if (p.role === '黃煙煙' || p.role === '木戶加奈') {
+              if (p.confusedRound === null || p.confusedRound === undefined) {
+                p.confusedRound = Math.floor(Math.random() * 3);
+              }
+            }
+          }
+        });
+        if (isFirebaseReady && db && (room.players[0].id === myOnlinePlayerId || !room.players.some(p => !p.id.startsWith('mock_p_')))) {
+          db.doc(ONLINE_ROOM_DOC).update({ players: room.players }).catch(e => console.warn('更新修復角色失敗:', e));
+        }
+      }
+    }
+
     // 依 room.status 派發視圖
  if (room.status === 'waiting') {
+ window._currentGameOverRenderedId = null;
  showOnlineSubView('onlSecLobby');
  renderOnlineLobby(room, me);
  } else if (room.status === 'roles') {
@@ -2038,14 +2600,27 @@ function checkWatermarkUploadedState() {
  } else if (room.status === 'playing') {
  showOnlineSubView('onlSecTurn');
  renderOnlineTurnView(room, me);
+ // 依要求7：若輪到該玩家行動，頁面自動移到最上方
+ if (room.currentTurnPlayerId === myOnlinePlayerId && window._lastScrolledTurnActionId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {
+ window._lastScrolledTurnActionId = myOnlinePlayerId + '_' + room.currentRoundIdx;
+ setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+ }
  } else if (room.status === 'discussion' || room.status === 'voting') {
+ // 依要求7：若輪到該玩家發言，頁面自動移到最上方
+ if (room.status === 'discussion' && room.currentSpeakerId === myOnlinePlayerId && window._lastScrolledSpeechId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {
+ window._lastScrolledSpeechId = myOnlinePlayerId + '_' + room.currentRoundIdx;
+ setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+ }
  showOnlineSubView('onlSecDiscussionVoting');
  renderOnlineDiscussionView(room, me);
  renderOnlineVotingView(room, me);
+      if (room.status === 'voting') { autoScrollToVotingStageIfNeeded(room); }
  } else if (room.status === 'person_voting') {
  showOnlineSubView('onlSecPersonVoting');
  renderOnlinePersonVotingView(room, me);
+      autoScrollToTopForPersonVoting();
  } else if (room.status === 'gameover') {
+ // 依最新要求：線上版對局最終結果改回在房間內觀看，玩家是可以看到結果的畫面
  showOnlineSubView('onlSecGameOver');
  renderOnlineGameOverView(room, me);
  }
@@ -2077,7 +2652,7 @@ function checkWatermarkUploadedState() {
 
         // 移除被踢玩家
         players.splice(pIdx, 1);
-        players.forEach((p, idx) => { p.seatIndex = idx; });
+        // 依要求4：剔除玩家後直接讓座位空出，絕不重編其他玩家 seatIndex
 
         // 記錄被踢名單，防範該玩家端自動重連 (autoJoinLobbySeats)
         if (!kickedPlayerIds.includes(targetId)) {
@@ -2095,6 +2670,14 @@ function checkWatermarkUploadedState() {
           lockedUntil: lockedUntil,
           lastKickedAt: Date.now()
         };
+
+        // 依要求3：立即樂觀更新本地畫面，換座與剔除零延遲不卡頓
+        if (onlineRoomData) {
+          onlineRoomData.players = players;
+          onlineRoomData.kickedPlayerIds = kickedPlayerIds;
+          const me = players.find(p => p.id === myOnlinePlayerId);
+          renderOnlineLobby(onlineRoomData, me);
+        }
 
         await docRef.update({
           players: players,
@@ -2187,7 +2770,31 @@ function checkWatermarkUploadedState() {
       }
     }
 
+    let _lobbyWaitingTimeoutTimer = null;
     function renderOnlineLobby(room, me) {
+      if (!_lobbyWaitingTimeoutTimer) {
+        _lobbyWaitingTimeoutTimer = setInterval(() => {
+          if (onlineRoomData && onlineRoomData.status === 'waiting') {
+            const wTime = onlineRoomData.waitingSince || (onlineRoomData.createdAt ? (onlineRoomData.createdAt.toMillis ? onlineRoomData.createdAt.toMillis() : (typeof onlineRoomData.createdAt === 'number' ? onlineRoomData.createdAt : null)) : null);
+            if (wTime && typeof wTime === 'number' && (Date.now() - wTime >= 5 * 60 * 1000)) {
+              clearInterval(_lobbyWaitingTimeoutTimer);
+              _lobbyWaitingTimeoutTimer = null;
+              alert('⏱️ 房間已超時五分鐘未開始');
+              try {
+                if (isFirebaseReady && db) {
+                  initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
+                }
+              } catch(e) {}
+              clearAllCookies();
+              resetAllOnlineClientState();
+              selectAppMode('mode_picker');
+            }
+          } else {
+            clearInterval(_lobbyWaitingTimeoutTimer);
+            _lobbyWaitingTimeoutTimer = null;
+          }
+        }, 5000);
+      }
       const players = room.players || [];
       const badge = document.getElementById('onlLobbyPlayerCountBadge');
       if (badge) badge.innerText = `${players.length} / 8 人在線`;
@@ -2269,17 +2876,19 @@ function checkWatermarkUploadedState() {
       if (startSec) startSec.classList.remove('hidden');
 
       if (startBtn) {
-        startBtn.disabled = false; // 永不鎖定，點擊即時反應
+        if (window._isDealingRoles) {
+          startBtn.disabled = true;
+          startBtn.className = "w-full py-4 bg-amber-600/80 text-neutral-950 font-black text-lg rounded-xl shadow-xl transition cursor-wait animate-pulse";
+          startBtn.innerHTML = "分配角色中...";
+          startBtn.onclick = null;
+        } else {
+          startBtn.disabled = false; // 永不鎖定，點擊即時反應
 
-        if (isAllReady) {
-          // 全員已就緒：變成金色直接開局按鍵，點擊立刻發牌開局！
-          startBtn.className = "w-full py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 text-neutral-950 font-black text-xl rounded-xl shadow-2xl transition animate-pulse cursor-pointer border-2 border-amber-300 active:scale-[0.99]";
-          startBtn.innerHTML = `🚀 全員就緒！點此直接開始遊戲 ➔`;
-          startBtn.onclick = () => {
-            stopLobbyCountdown();
-            executeOnlineStartDeal(room);
-          };
-        } else if (isMyReady) {
+        if (isMyReady) {
+          startBtn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-black text-lg rounded-xl shadow-xl transition cursor-default";
+          startBtn.innerHTML = isAllReady ? '🎉 全員已就緒・開局倒數中...' : `✓ 您已就緒・等待其他玩家 (${readyCount}/8)`;
+          startBtn.onclick = isAllReady ? null : toggleMyReadyStart;
+        
           startBtn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-black text-lg rounded-xl shadow-xl transition active:scale-[0.99] cursor-pointer";
           startBtn.innerHTML = `✓ 您已就緒・等待其他玩家 (${readyCount}/8)`;
           startBtn.onclick = toggleMyReadyStart;
@@ -2288,11 +2897,15 @@ function checkWatermarkUploadedState() {
           startBtn.innerHTML = `🎮 點擊就緒・確認開始 (${readyCount}/8)`;
           startBtn.onclick = toggleMyReadyStart;
         }
+        }
       }
 
       if (waitingNotice) {
+        if (window._isDealingRoles) {
+          waitingNotice.innerText = "分配角色中...";
+        } else
         if (players.length < 8) {
-          waitingNotice.innerText = `目前在線 ${players.length}/8 人，請等待 8 位玩家入座（或點下方一鍵補齊戰國武將）...`;
+          waitingNotice.innerText = `目前在線 ${players.length}/8 人，請等待 8 位玩家入座`;
         } else if (!isAllReady) {
           waitingNotice.innerText = `8 人已到齊！已就緒 ${readyCount}/8 人，請尚未就緒的玩家點擊確認...`;
         } else {
@@ -2309,33 +2922,45 @@ function checkWatermarkUploadedState() {
     }
 
     // 換座：順時針/逆時針換位
+    let _shiftSeatDebounceTimer = null;
+
     async function shiftMySeat(delta) {
       if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
       const docRef = db.doc(ONLINE_ROOM_DOC);
 
-      try {
-        await db.runTransaction(async (transaction) => {
-          const snap = await transaction.get(docRef);
-          if (!snap.exists) return;
-          const data = snap.data();
-          let players = data.players ? [...data.players] : [];
-          let me = players.find(p => p.id === myOnlinePlayerId);
-          if (!me) return;
+      // 依要求3：剔除玩家後換座不lag！採用本機樂觀更新(0ms響應) + 防抖合併寫入雲端
+      let room = onlineRoomData;
+      let players = room.players ? [...room.players] : [];
+      let me = players.find(p => p.id === myOnlinePlayerId);
+      if (!me) return;
 
-          const oldSeat = (me.seatIndex !== undefined && me.seatIndex !== null) ? me.seatIndex : 0;
-          const targetSeat = (oldSeat + delta + 8) % 8;
+      const oldSeat = (me.seatIndex !== undefined && me.seatIndex !== null) ? me.seatIndex : 0;
+      const targetSeat = (oldSeat + delta + 8) % 8;
 
-          const other = players.find(p => p.seatIndex === targetSeat);
-          if (other) {
-            other.seatIndex = oldSeat;
-          }
-          me.seatIndex = targetSeat;
-
-          transaction.update(docRef, { players: players });
-        });
-      } catch(e) {
-        console.error('換座失敗:', e);
+      const other = players.find(p => p.seatIndex === targetSeat);
+      if (other) {
+        other.seatIndex = oldSeat;
       }
+      me.seatIndex = targetSeat;
+      room.players = players;
+
+      // 立即本機重繪大廳圓形座位，手感絲滑秒響應
+      renderOnlineLobby(room, me);
+
+      // 防抖同步寫入 Firestore，避免連續點擊引發交易衝突或網路卡頓
+      if (_shiftSeatDebounceTimer) {
+        clearTimeout(_shiftSeatDebounceTimer);
+      }
+      _shiftSeatDebounceTimer = setTimeout(async () => {
+        try {
+          await docRef.update({
+            players: players,
+            lastActivityTime: Date.now()
+          });
+        } catch(e) {
+          console.error('同步換座至雲端失敗:', e);
+        }
+      }, 100);
     }
     window.shiftMySeat = shiftMySeat;
 
@@ -2403,29 +3028,39 @@ function checkWatermarkUploadedState() {
 
     async function toggleMyReadyStart() {
       if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
+      const room = onlineRoomData;
+      let players = room.players ? [...room.players] : [];
+      let me = players.find(p => p.id === myOnlinePlayerId);
+      if (!me) return;
+
+      // 1. 本地樂觀立即切換狀態與畫面 (零延遲！)
+      me.readyToStart = !me.readyToStart;
+      renderOnlineLobby(room, me);
+
+      // 2. 快速非阻塞寫入資料庫
       const docRef = db.doc(ONLINE_ROOM_DOC);
-
       try {
-        await db.runTransaction(async (transaction) => {
-          const snap = await transaction.get(docRef);
-          if (!snap.exists) return;
-          const data = snap.data();
-          let players = data.players ? [...data.players] : [];
-          let me = players.find(p => p.id === myOnlinePlayerId);
-          if (!me) return;
-
-          me.readyToStart = !me.readyToStart;
-          transaction.update(docRef, { players: players });
-        });
+        await docRef.update({ players: players });
       } catch(e) {
         console.error('更新就緒狀態失敗:', e);
       }
     }
     window.toggleMyReadyStart = toggleMyReadyStart;
 
-    // 8 人全員確認後，開局發牌事務 (原子交易，100% 成功)
+    // 8 人全員確認後，開局發牌事務 (原子交易，100% 成功，嚴格保證 8 人皆有角色且不重複)
     async function executeOnlineStartDeal(room) {
-      if (!isFirebaseReady || !db) return;
+      window._isDealingRoles = true;
+      const curStartBtn = document.getElementById('btnOnlReadyStart');
+      if (curStartBtn) {
+        curStartBtn.disabled = true;
+        curStartBtn.className = "w-full py-4 bg-amber-600/80 text-neutral-950 font-black text-lg rounded-xl shadow-xl transition cursor-wait animate-pulse";
+        curStartBtn.innerHTML = "分配角色中...";
+        curStartBtn.onclick = null;
+      }
+      if (!isFirebaseReady || !db) {
+        window._isDealingRoles = false;
+        return;
+      }
       const docRef = db.doc(ONLINE_ROOM_DOC);
 
       try {
@@ -2436,12 +3071,75 @@ function checkWatermarkUploadedState() {
           if (data.status !== 'waiting') return; // 已由其他裝置開局，直接安全退出
 
           let players = data.players || [];
-          if (players.length < 8) return;
 
-          const roleList = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'].sort(() => Math.random() - 0.5);
+          // 依要求：確保房間內剛好有 8 位玩家 (若不足 8 位，自動以戰國武將補齊空位；若超過 8 位，保留前 8 位)
+          const neededCount = 8 - players.length;
+          if (neededCount > 0) {
+            const shuffledWarlords = [...WARLORD_MOCK_NAMES].sort(() => Math.random() - 0.5);
+            const usedNames = new Set(players.map(p => p.name));
+            const usedColors = new Set(players.map(p => p.colorId));
+            const usedSeats = new Set(players.map(p => p.seatIndex));
 
+            let added = 0;
+            for (const warlordName of shuffledWarlords) {
+              if (added >= neededCount) break;
+              if (usedNames.has(warlordName)) continue;
+
+              const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];
+              usedColors.add(availColor.id);
+              usedNames.add(warlordName);
+
+              let availSeat = 0;
+              for (let s = 0; s < 8; s++) {
+                if (!usedSeats.has(s)) {
+                  availSeat = s;
+                  usedSeats.add(s);
+                  break;
+                }
+              }
+
+              players.push({
+                id: 'mock_p_' + Date.now() + '_' + (added + 1),
+                name: warlordName,
+                repChar: getRepresentativeChar(warlordName),
+                colorId: availColor.id,
+                seatIndex: availSeat,
+                readyToStart: true,
+                role: '',
+                roleConfirmed: true,
+                isAmbushed: false,
+                isPermanentlyAmbushed: false,
+                confusedRound: null
+              });
+              added++;
+            }
+          }
+
+          // 去重並嚴格取前 8 位玩家
+          const uniquePlayersMap = new Map();
+          players.forEach(p => {
+            if (!uniquePlayersMap.has(p.id)) uniquePlayersMap.set(p.id, p);
+          });
+          players = Array.from(uniquePlayersMap.values()).slice(0, 8);
+
+          // 確保每位玩家都有 seatIndex (0..7)
           players.forEach((p, idx) => {
-            p.role = roleList[idx];
+            if (p.seatIndex === undefined || p.seatIndex === null) {
+              p.seatIndex = idx;
+            }
+          });
+
+          // 8 種角色嚴格洗牌 (Fisher-Yates 演算法，100% 隨機且絕對不重複)
+          const ALL_8_ROLES = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'];
+          const shuffledRoles = [...ALL_8_ROLES];
+          for (let i = shuffledRoles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
+          }
+
+          // 隨機分派角色，保證不重複且絕無玩家無角色
+          players.forEach((p, idx) => {
+            p.role = shuffledRoles[idx];
             p.roleConfirmed = p.id.startsWith('mock_p_') ? true : false;
             p.isAmbushed = false;
             p.isPermanentlyAmbushed = false;
@@ -2497,7 +3195,19 @@ function checkWatermarkUploadedState() {
 
     // 角色確認視圖
  function renderOnlineRoleReveal(room, me) {
+ if (!me) {
+   const players = room.players || [];
+   if (players.length > 0) {
+     me = players.find(p => p.id === myOnlinePlayerId) || (myOnlinePlayerName ? players.find(p => p.name === myOnlinePlayerName) : null) || players[0];
+   }
+ }
  if (!me) return;
+ if (!me.role) {
+   const ALL_8_ROLES = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'];
+   const used = new Set((room.players || []).map(p => p.role).filter(Boolean));
+   const unused = ALL_8_ROLES.filter(r => !used.has(r));
+   me.role = unused.length > 0 ? unused[0] : ALL_8_ROLES[Math.floor(Math.random() * ALL_8_ROLES.length)];
+ }
  const roleNameEl = document.getElementById('onlMyRoleName');
  const campBadge = document.getElementById('onlMyCampBadge');
  const roleDesc = document.getElementById('onlMyRoleDesc');
@@ -2629,6 +3339,18 @@ function checkWatermarkUploadedState() {
  }
 
  // 電腦測試玩家自動託管行動
+ 
+ // 依要求1：第 2、3 回合玩家操作時，在查看戰績排行榜按鈕上方展示前幾回合獸首票型與傳位順序
+ const priorHistorySec = document.getElementById('onlTurnPriorHistorySection');
+ if (priorHistorySec) {
+ if (curRoundIdx > 0) {
+ priorHistorySec.classList.remove('hidden');
+ renderOnlineTurnPriorHistory(room, curRoundIdx);
+ } else {
+ priorHistorySec.classList.add('hidden');
+ }
+ }
+
  if (turnPlayerId && turnPlayerId.startsWith('mock_p_') && room.status === 'playing') {
  triggerMockPlayerTurnAction(room, turnPlayerId);
  }
@@ -2644,7 +3366,6 @@ function checkWatermarkUploadedState() {
  pGrid.innerHTML += `
  <div class="p-3 bg-neutral-900 border border-neutral-800 rounded-xl flex flex-col items-center justify-center shadow">
  <span class="text-2xl font-black text-amber-300 font-mono">${b.name}</span>
- <span class="text-[9px] text-neutral-500 mt-1">第 ${idx + 1} 位</span>
  </div>
  `;
  });
@@ -2662,13 +3383,18 @@ function checkWatermarkUploadedState() {
  const yaoP = (room.players || []).find(x => x.role === '藥不然');
 
  turnCampBanner.classList.remove('hidden');
+ const laoC = laoP ? (COLOR_PALETTE.find(c => c.id === laoP.colorId) || COLOR_PALETTE[0]) : null;
+ const yaoC = yaoP ? (COLOR_PALETTE.find(c => c.id === yaoP.colorId) || COLOR_PALETTE[0]) : null;
+ const laoNameTag = laoP && laoC ? `<span class="${laoC.bgClass} px-2 py-0.5 rounded font-black text-xs inline-flex items-center shadow-xs" style="background-color: ${laoC.hex}; color: ${laoC.id === 'white' || laoC.id === 'yellow' ? '#0a0a0a' : '#ffffff'};">${laoP.name}</span><span class="ml-1 text-neutral-300 font-bold">: (老朝奉)</span>` : '';
+ const yaoNameTag = yaoP && yaoC ? `<span class="${yaoC.bgClass} px-2 py-0.5 rounded font-black text-xs inline-flex items-center shadow-xs" style="background-color: ${yaoC.hex}; color: ${yaoC.id === 'white' || yaoC.id === 'yellow' ? '#0a0a0a' : '#ffffff'};">${yaoP.name}</span><span class="ml-1 text-neutral-300 font-bold">: (藥不然)</span>` : '';
+
  turnCampBanner.innerHTML = `
- <div class="flex items-center space-x-2 text-xs">
+ <div class="flex items-center space-x-2 text-xs flex-wrap gap-y-1">
  <span class="text-amber-400 font-black">陣營資訊（相認）：</span>
- <span class="font-bold text-neutral-200">
- ${laoP ? `${laoP.name}: (老朝奉)` : ''}
- \&nbsp;\&nbsp;｜\&nbsp;\&nbsp;
- ${yaoP ? `${yaoP.name}: (藥不然)` : ''}
+ <span class="font-bold text-neutral-200 inline-flex items-center flex-wrap gap-1">
+ ${laoNameTag}
+ ${laoNameTag && yaoNameTag ? '<span class="mx-2 text-neutral-500 font-bold">｜</span>' : ''}
+ ${yaoNameTag}
  </span>
  </div>
  `;
@@ -2698,12 +3424,13 @@ function checkWatermarkUploadedState() {
  const isUnderAmbush = me.isAmbushed || me.isPermanentlyAmbushed;
  const targetInspectCount = (me.role === '許願' && !isUnderAmbush) ? 2 : 1;
 
- // 判定 Step A 是否鎖定
+ // 判定 Step A 是否鎖定 (若方震被藥不然偷襲，則獸首查驗階段只能選一個)
+ const isFangZhenUnderAmbush = (me.role === '方震' && isUnderAmbush);
  let isStepALocked = false;
  if (currentSubStep === 'b' || currentSubStep === 'c') {
  isStepALocked = true;
  } else if (me.role === '方震') {
- isStepALocked = false;
+ isStepALocked = isFangZhenUnderAmbush ? (onlMyInspectedBeastsInTurn.length >= 1) : false;
  } else if (me.role === '許願') {
  isStepALocked = onlMyInspectedBeastsInTurn.length >= targetInspectCount;
  } else {
@@ -2720,7 +3447,7 @@ function checkWatermarkUploadedState() {
  btn.type = 'button';
  const inspectedObj = onlMyInspectedBeastsInTurn.find(item => item.beastName === b.name);
  const isChosen = !!inspectedObj;
- const cannotClick = isStepALocked || (isChosen && me.role !== '方震');
+ const cannotClick = isStepALocked || (isChosen && (!isFangZhenUnderAmbush && me.role === '方震' ? false : true));
 
  btn.className = `p-3 rounded-xl text-center transition flex flex-col items-center justify-center border ${
  isChosen
@@ -2728,7 +3455,7 @@ function checkWatermarkUploadedState() {
 : (isStepALocked ? 'bg-neutral-900/50 border-neutral-800 opacity-40 cursor-not-allowed pointer-events-none' : 'bg-neutral-950 hover:bg-neutral-800 border-neutral-700 hover:border-amber-500 cursor-pointer')
  }`;
 
- btn.innerHTML = `<span class="text-3xl font-black text-amber-300">${b.name}</span><div class="text-[9px] text-neutral-400 mt-1">${isChosen ? '已查驗' : (isStepALocked ? '已鎖定' : `第 ${sIdx + 1} 位`)}</div>`;
+ btn.innerHTML = `<span class="text-3xl font-black text-amber-300">${b.name}</span><div class="text-[9px] font-bold mt-1 ${isChosen && isUnderAmbush ? 'text-rose-400 font-black' : 'text-neutral-400'}">${isChosen ? (inspectedObj ? inspectedObj.resultText : '已查驗') : (isStepALocked ? '已鎖定' : '')}</div>`;
  if (!cannotClick) {
  btn.onclick = () => onlInspectBeast(b, sIdx + 1, room, me);
  }
@@ -2747,7 +3474,7 @@ function checkWatermarkUploadedState() {
 
  // 下一步：角色能力按鈕控制
  const stepBBtn = document.getElementById('btnOnlGoToStepB');
- const canProceedStepB = (me.role === '方震') || (onlMyInspectedBeastsInTurn.length >= targetInspectCount);
+ const canProceedStepB = (me.role === '方震' && !isFangZhenUnderAmbush) || (onlMyInspectedBeastsInTurn.length >= targetInspectCount);
  if (stepBBtn) {
  if (currentSubStep === 'b' || currentSubStep === 'c') {
  stepBBtn.disabled = true;
@@ -2791,14 +3518,18 @@ function checkWatermarkUploadedState() {
  const isUnderAmbush = me.isAmbushed || me.isPermanentlyAmbushed;
  const targetCount = (me.role === '許願' && !isUnderAmbush) ? 2 : 1;
 
- // 檢查是否已達查驗上限 (方震查驗不鎖定，可點多次)
- if (me.role !== '方震' && onlMyInspectedBeastsInTurn.length >= targetCount) return;
- if (onlMyInspectedBeastsInTurn.some(x => x.beastName === b.name) && me.role !== '方震') return;
-
- let displayText = '';
+ // 檢查是否已達查驗上限 (若方震被偷襲，則只能查驗 1 個獸首)
+    const isFangZhenUnderAmbush = (me.role === '方震' && isUnderAmbush);
+    if (!isFangZhenUnderAmbush && me.role === '方震') {
+      // 正常方震不鎖定
+    } else {
+      if (onlMyInspectedBeastsInTurn.length >= targetCount) return;
+      if (onlMyInspectedBeastsInTurn.some(x => x.beastName === b.name)) return;
+    }
+    let displayText = '';
 
  if (isUnderAmbush) {
- const ambushTexts = ['你眼前一片黑', '你被幹了', '你被偷襲了', '獸首被偷襲'];
+ const ambushTexts = ['你被偷襲', '獸首被偷襲', '你眼前一片黑', '你被幹了', '你失血過多，有點暈眩'];
  displayText = ambushTexts[Math.floor(Math.random() * ambushTexts.length)];
  }
 else if (me.role === '方震') {
@@ -2955,14 +3686,25 @@ else {
           const disAttr = isDisabled ? 'disabled' : '';
           const lockClass = isDisabled ? 'pointer-events-none opacity-45 cursor-not-allowed bg-neutral-950' : 'cursor-pointer hover:border-amber-400';
           
+          const isGoodCamp = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'].includes(p.role);
+          const isInspected = isAlreadyChecked || (myLog.fangZhenTargetId === p.id);
+          const campBadgeRight = isInspected
+            ? (isGoodCamp
+                ? '<span class="text-[10px] font-black text-blue-300 bg-blue-950/90 border border-blue-500 px-1.5 py-0.5 rounded shadow-xs">【許願陣營 】</span>'
+                : '<span class="text-[10px] font-black text-rose-300 bg-rose-950/90 border border-rose-500 px-1.5 py-0.5 rounded shadow-xs">【老朝奉陣營 】</span>')
+            : '';
+
           playersHtml += `
             <button type="button" onclick="onlSelectFangTarget('${p.id}')" ${disAttr} class="p-2.5 rounded-xl border bg-neutral-900 ${isSelected ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-950/40' : 'border-neutral-700'} ${lockClass} transition flex flex-col justify-between text-left min-h-[52px]">
-              <div class="flex items-center space-x-1.5">
-                <span class="${pc.bgClass} px-1.5 py-0.5 rounded text-[10px] font-black">${pc.name}色</span>
-                <span class="text-xs font-bold text-neutral-200 truncate">${p.name}</span>
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center space-x-1.5 min-w-0">
+                  <span class="${pc.bgClass} px-1.5 py-0.5 rounded text-[10px] font-black shrink-0">${pc.name}色</span>
+                  <span class="text-xs font-bold text-neutral-200 truncate">${p.name}</span>
+                </div>
+                ${campBadgeRight ? `<div class="shrink-0 ml-1">${campBadgeRight}</div>` : ''}
               </div>
               <div class="text-[10px] mt-1 flex justify-between items-center w-full">
-                ${isAlreadyChecked ? `<span class="text-neutral-500 font-bold">R${prevCheckedTargets[p.id].roundNum}已查驗</span>` : `<span class="text-neutral-400">${isSelected ? '✓ 已選取' : '點擊選擇'}</span>`}
+                ${isAlreadyChecked ? `<span class="text-neutral-500 font-bold">R${prevCheckedTargets[p.id].roundNum}已查驗</span>` : (myLog.fangZhenTargetId === p.id ? `<span class="text-emerald-400 font-bold">當局已查驗</span>` : `<span class="text-neutral-400">${isSelected ? '✓ 已選取' : '點擊選擇'}</span>`)}
                 ${isSelected ? '<span class="text-amber-400 text-xs font-black">✓</span>' : ''}
               </div>
             </button>
@@ -3026,12 +3768,9 @@ else {
               </div>
               <button onclick="onlGoToStepC()" class="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 font-bold text-xs rounded-xl border border-neutral-700">下一步：指定玩家 ➔</button>
             ` : `
-              <div class="flex space-x-2 pt-1">
-                <button type="button" onclick="onlConfirmLaoChaoFeng()" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow transition">
+              <div class="pt-1">
+                <button type="button" onclick="onlConfirmLaoChaoFeng()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow transition cursor-pointer active:scale-[0.99]">
                   確認鎖定設定 ➔
-                </button>
-                <button type="button" onclick="onlSkipLaoChaoFeng()" class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs rounded-xl border border-neutral-700">
-                  跳過不開技能 ➔
                 </button>
               </div>
             `}
@@ -3071,12 +3810,9 @@ else {
               <div class="text-center text-xs text-amber-400 font-bold pt-1">✓ 鄭國渠封鎖設定已鎖定 (${myLog.ability || '不封鎖'})</div>
               <button onclick="onlGoToStepC()" class="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 font-bold text-xs rounded-xl border border-neutral-700">下一步：指定玩家 ➔</button>
             ` : `
-              <div class="flex space-x-2 pt-1">
-                <button type="button" onclick="onlConfirmZhengBlock()" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow transition">
+              <div class="pt-1">
+                <button type="button" onclick="onlConfirmZhengBlock()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow transition cursor-pointer active:scale-[0.99]">
                   確認鎖定選擇 ➔
-                </button>
-                <button type="button" onclick="onlGoToStepC()" class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs rounded-xl border border-neutral-700">
-                  不發動・下一步 ➔
                 </button>
               </div>
             `}
@@ -3195,24 +3931,7 @@ else {
     }
     window.onlToggleLaoState = onlToggleLaoState;
 
-    async function onlSkipLaoChaoFeng() {
-      if (!onlineRoomData) return;
-      const room = onlineRoomData;
-      const curRound = room.rounds[room.currentRoundIdx];
-
-      onlTempLaoActive = false;
-      curRound.laoChaoFengActive = false;
-
-      if (!curRound.turnLogs) curRound.turnLogs = {};
-      if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
-      curRound.turnLogs[myOnlinePlayerId].ability = '未開啟擾亂（確定未發動）';
-      curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
-
-      await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
-      const me = room.players.find(p => p.id === myOnlinePlayerId);
-      renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
-    }
-    window.onlSkipLaoChaoFeng = onlSkipLaoChaoFeng;
+    // 依要求1：老朝奉已有不開啟擾亂按鈕，移除跳過不開技能功能
 
     async function onlConfirmLaoChaoFeng() {
       if (!onlineRoomData) return;
@@ -3226,6 +3945,8 @@ else {
       curRound.turnLogs[myOnlinePlayerId].ability = onlTempLaoActive ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（確定未發動）';
       curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
 
+      // 依要求1：選擇後按下確認鎖定鍵即可到下階段
+      onlGoToStepC();
       await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
       const me = room.players.find(p => p.id === myOnlinePlayerId);
       renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
@@ -3243,25 +3964,28 @@ else {
  window.onlSelectZhengBlock = onlSelectZhengBlock;
 
  async function onlConfirmZhengBlock() {
- if (!onlineRoomData || !onlTempZhengBlock) return;
- const room = onlineRoomData;
- const curRound = room.rounds[room.currentRoundIdx];
+      if (!onlineRoomData) return;
+      const room = onlineRoomData;
+      const curRound = room.rounds[room.currentRoundIdx];
+      const blockChoice = onlTempZhengBlock || '__SKIP__';
 
- if (onlTempZhengBlock === '__SKIP__') {
- curRound.blockedBeast = null;
- } else {
- curRound.blockedBeast = onlTempZhengBlock;
- }
+      if (blockChoice === '__SKIP__') {
+        curRound.blockedBeast = null;
+      } else {
+        curRound.blockedBeast = blockChoice;
+      }
 
- if (!curRound.turnLogs) curRound.turnLogs = {};
- if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
- curRound.turnLogs[myOnlinePlayerId].ability = (onlTempZhengBlock === '__SKIP__') ? '不封鎖任何獸首' : `封鎖【${onlTempZhengBlock}】`;
- curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
+      if (!curRound.turnLogs) curRound.turnLogs = {};
+      if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
+      curRound.turnLogs[myOnlinePlayerId].ability = (blockChoice === '__SKIP__') ? '不封鎖任何獸首' : `封鎖【${blockChoice}】`;
+      curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
 
- await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
- const me = room.players.find(p => p.id === myOnlinePlayerId);
- renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
- }
+      // 選擇後按下確認鎖定鍵即可到下階段 (Step C)
+      onlGoToStepC();
+      db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
+      const me = room.players.find(p => p.id === myOnlinePlayerId);
+      renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
+    }
  window.onlConfirmZhengBlock = onlConfirmZhengBlock;
 
  function onlSelectYaoTarget(pId) {
@@ -3291,6 +4015,10 @@ else {
  targetP.isPermanentlyAmbushed = true;
  } else if (targetP.role === '方震') {
  targetP.isAmbushed = true;
+        if (targetP.role === '方震') {
+          const xu = room.players.find(p => p.role === '許願');
+          if (xu) xu.isAmbushed = true;
+        }
  const xu = room.players.find(p => p.role === '許願');
  if (xu) xu.isAmbushed = true;
  } else {
@@ -3320,9 +4048,14 @@ else {
  if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
  const myLog = curRound.turnLogs[myOnlinePlayerId];
 
- // 修改5: 每回合的角色專屬能力階段默認為先不發動
+ const isUnderAmbush = me && (me.isAmbushed || me.isPermanentlyAmbushed);
+
+ // 角色專屬能力階段處理：若處於偷襲狀態，直接標記封鎖並放行進入下階段
  if (!myLog.abilityLocked) {
- if (me.role === '老朝奉') {
+ if (isUnderAmbush) {
+ myLog.ability = '遭偷襲（能力封鎖）';
+ myLog.abilityLocked = true;
+ } else if (me.role === '老朝奉') {
  myLog.ability = onlTempLaoActive ? '開啟擾亂（真偽反轉）' : '關閉擾亂';
  curRound.laoChaoFengActive = !!onlTempLaoActive;
  } else if (me.role === '鄭國渠') {
@@ -3331,6 +4064,7 @@ else {
  } else if (me.role === '藥不然') {
  myLog.ability = '跳過不偷襲';
  } else if (me.role === '方震') {
+          // 若方震未被偷襲，方震角色專屬能力為強制發動
           if (!myLog.abilityLocked) {
             alert('方震角色專屬能力為強制發動，請先選擇一名玩家查驗陣營！');
             return;
@@ -3367,7 +4101,7 @@ else {
         if (confirmWrapper) confirmWrapper.classList.add('hidden');
         if (allDoneBanner) {
           allDoneBanner.classList.remove('hidden');
-          let beastsHtml = '<div class="pt-2.5 text-left space-y-1.5"><div class="text-xs font-bold text-neutral-300 flex items-center justify-between border-b border-neutral-800 pb-1.5"><span class="text-amber-400 font-bold">本回合四件獸首：</span><span class="text-[10px] text-neutral-400">生肖序</span></div><div class="grid grid-cols-4 gap-2 text-center pt-1">';
+          let beastsHtml = '<div class="pt-2.5 text-left space-y-1.5"><div class="text-xs font-bold text-neutral-300 flex items-center justify-between border-b border-neutral-800 pb-1.5"><span class="text-amber-400 font-bold">本回合四件獸首：</span></div><div class="grid grid-cols-4 gap-2 text-center pt-1">';
           const sortedBeasts = [...curRound.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
           sortedBeasts.forEach(b => {
             beastsHtml += `
@@ -3478,44 +4212,51 @@ else {
  
     async function onlProceedToDiscussion() {
       if (!onlineRoomData || !isFirebaseReady || !db) return;
-      const docRef = db.doc(ONLINE_ROOM_DOC);
+      const room = onlineRoomData;
+      const curRIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
+      const curRound = (room.rounds && room.rounds[curRIdx]) ? room.rounds[curRIdx] : null;
+      if (!curRound) return;
 
+      const passOrder = curRound.passOrder || [];
+      const tailPlayerId = passOrder[passOrder.length - 1];
+      const tailPlayer = (room.players || []).find(p => p.id === tailPlayerId);
+      const tailSeat = tailPlayer ? tailPlayer.seatIndex : 0;
+
+      // 尾家左手邊起發言
+      const speechOrder = [];
+      for (let i = 1; i <= 8; i++) {
+        const targetSeat = (tailSeat + i) % 8;
+        const speaker = (room.players || []).find(p => p.seatIndex === targetSeat);
+        if (speaker && !speechOrder.includes(speaker.id)) {
+          speechOrder.push(speaker.id);
+        }
+      }
+      (room.players || []).forEach(p => {
+        if (!speechOrder.includes(p.id)) speechOrder.push(p.id);
+      });
+
+      curRound.speechOrder = speechOrder;
+      curRound.speechIndex = 0;
+      curRound.speeches = curRound.speeches || [];
+
+      // 1. 本地樂觀立即切換狀態與畫面 (零延遲！)
+      room.status = 'discussion';
+      room.currentSpeakerId = speechOrder[0];
+      _lastWatchdogDiscussionCheck = 0;
+      handleOnlineRoomUpdate(room);
+
+      // 2. 非阻塞式立即寫入資料庫
       try {
-        await db.runTransaction(async (transaction) => {
-          const snap = await transaction.get(docRef);
-          if (!snap.exists) return;
-          const room = snap.data();
-          const curRound = room.rounds[room.currentRoundIdx];
-          const passOrder = curRound.passOrder || [];
-          const tailPlayerId = passOrder[passOrder.length - 1];
-          const tailPlayer = (room.players || []).find(p => p.id === tailPlayerId);
-          const tailSeat = tailPlayer ? tailPlayer.seatIndex : 0;
-
-          // 尾家左手邊起發言
-          const speechOrder = [];
-          for (let i = 1; i <= 8; i++) {
-            const targetSeat = (tailSeat + i) % 8;
-            const speaker = (room.players || []).find(p => p.seatIndex === targetSeat);
-            if (speaker && !speechOrder.includes(speaker.id)) {
-              speechOrder.push(speaker.id);
-            }
-          }
-          (room.players || []).forEach(p => {
-            if (!speechOrder.includes(p.id)) speechOrder.push(p.id);
-          });
-
-          curRound.speechOrder = speechOrder;
-          curRound.speechIndex = 0;
-          curRound.speeches = [];
-
-          transaction.update(docRef, {
-            status: 'discussion',
-            currentSpeakerId: speechOrder[0],
-            rounds: room.rounds
-          });
+        db.doc(ONLINE_ROOM_DOC).update({
+          status: 'discussion',
+          currentSpeakerId: speechOrder[0],
+          rounds: room.rounds,
+          lastActivityTime: Date.now()
+        }).catch(err => {
+          console.error('前往鑑寶更新失敗:', err);
         });
       } catch(e) {
-        console.error('前往鑑寶失敗:', e);
+        console.error('前往鑑寶更新錯誤:', e);
       }
     }
     window.onlProceedToDiscussion = onlProceedToDiscussion;
@@ -3538,7 +4279,116 @@ async function onlConfirmPassNextPlayer() {
  }
  window.onlConfirmPassNextPlayer = onlConfirmPassNextPlayer;
 
- function renderPassOrderRows(room, curRound) {
+ 
+    // 依要求1：第 2、3 回合玩家操作時渲染前幾回合獸首投票票型與手機傳遞順序
+    function renderOnlineTurnPriorHistory(room, curRoundIdx) {
+      const container = document.getElementById('onlTurnPriorBeastsChipsContainer');
+      if (container) {
+        container.innerHTML = '';
+        (room.rounds || []).forEach(r => {
+          if (r.roundNum > curRoundIdx) return; // 僅展示前幾回合
+          if (!r.voteResults) return;
+          const res = r.voteResults;
+          const roundBox = document.createElement('div');
+          roundBox.className = 'p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2.5';
+
+          const top2Names = new Set([
+            res.rank1 ? res.rank1.name : null,
+            res.rank2 ? res.rank2.name : null
+          ].filter(Boolean));
+
+          let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';
+          const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
+          sortedChipsBeasts.forEach(b => {
+            const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
+            const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];
+
+            let chipsRectHtml = '';
+            chips.forEach(ch => {
+              const isBlack = (ch.colorId === 'black' || ch.bgClass.includes('bg-black'));
+              const borderStyle = isBlack ? 'border border-dotted border-white shadow-xs bg-black' : `border border-black/80 shadow-xs ${ch.bgClass}`;
+              chipsRectHtml += `<span class="w-3.5 h-2 sm:w-4 sm:h-2.5 rounded-xs inline-block flex-shrink-0 ${borderStyle}" title="${ch.voterName}"></span>`;
+            });
+
+            const isTop2 = top2Names.has(b.name);
+            const beastCardBorder = isTop2 
+              ? 'border-2 border-amber-400 ring-1 ring-amber-400 shadow-md shadow-amber-950/40 bg-amber-950/20' 
+              : 'border border-neutral-800 bg-neutral-950';
+
+            let truthBadge = '';
+            if (res.rank2 && res.rank2.name === b.name) {
+              truthBadge = `<span class="text-[10px] font-black ${res.rank2.isReal ? 'text-emerald-300 bg-emerald-950/90 border border-emerald-600/70' : 'text-rose-300 bg-rose-950/90 border border-rose-600/70'} px-1.5 py-0.5 rounded mt-1 shadow-sm">🥈${res.rank2.isReal ? '【真品】' : '【贗品】'}</span>`;
+            } else if (res.rank1 && res.rank1.name === b.name) {
+              truthBadge = '<span class="text-[10px] font-bold text-amber-400 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.5 rounded mt-1">🥇秘密封存</span>';
+            }
+
+            beastsGridHtml += `
+              <div onclick="openOnlChipBallotModal(${r.roundNum}, '${b.name}')" class="p-2 rounded-xl ${beastCardBorder} hover:border-amber-400 transition cursor-pointer flex flex-col items-center justify-between min-h-[96px] shadow-sm" title="點擊檢視【${b.name}】票型">
+                <span class="text-xl font-black text-amber-300 font-mono">${b.name}</span>
+                <div class="flex items-center justify-center flex-wrap gap-1 my-1 min-h-[12px] max-w-full">
+                  ${chipsRectHtml || '<span class="text-[9px] text-neutral-600 font-mono">0票</span>'}
+                </div>
+                <span class="text-[10px] text-neutral-400 font-mono font-bold">${totalVotes} 票</span>
+                ${truthBadge}
+              </div>
+            `;
+          });
+          beastsGridHtml += '</div>';
+
+          const r1Name = res.rank1 ? res.rank1.name : '';
+          const r2Name = res.rank2 ? res.rank2.name : '';
+          const r2Real = res.rank2 ? res.rank2.isReal : false;
+
+          roundBox.innerHTML = `
+            <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
+              <span class="font-bold text-amber-400">第 ${r.roundNum} 回合投票結果：</span>
+              <span class="text-[10px] text-neutral-400">點擊獸首看籌碼明細</span>
+            </div>
+            ${beastsGridHtml}
+            <div class="p-2 bg-neutral-950 border border-neutral-800 rounded-lg flex justify-between items-center text-xs mt-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-amber-400 font-bold">🥇 第 1 名：${r1Name}</span>
+                <span class="text-[10px] text-neutral-400">（秘密封存）</span>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-neutral-200 font-bold">🥈 第 2 名：${r2Name}</span>
+                <span class="font-black text-sm ${r2Real ? 'text-emerald-400' : 'text-rose-400'}">${r2Real ? '【真品】' : '【贗品】'}</span>
+              </div>
+            </div>
+          `;
+          container.appendChild(roundBox);
+        });
+      }
+
+      // 手機傳遞順序（三回合）
+      const passOrderBox = document.getElementById('onlTurnPriorPassOrderContainer');
+      if (passOrderBox) {
+        passOrderBox.innerHTML = '';
+        (room.rounds || []).forEach(r => {
+          const passList = r.passOrder || [];
+          if (passList.length === 0) return;
+          let chipsHtml = '';
+          passList.forEach(pId => {
+            const p = (room.players || []).find(x => x.id === pId);
+            if (!p) return;
+            const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+            chipsHtml += `
+              <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0" title="${p.name}">
+                ${p.repChar || getRepresentativeChar(p.name)}
+              </div>
+            `;
+          });
+          passOrderBox.innerHTML += `
+            <div class="flex items-center space-x-2 py-1">
+              <span class="text-[10px] font-bold text-neutral-400 w-12 flex-shrink-0">R${r.roundNum}順序:</span>
+              <div class="flex items-center space-x-1.5 overflow-x-auto">${chipsHtml}</div>
+            </div>
+          `;
+        });
+      }
+    }
+
+    function renderPassOrderRows(room, curRound) {
  const actingId = room.currentTurnPlayerId;
 
  // 修改5: 本回合手機傳遞順序上方要有前幾回合手機傳遞順序
@@ -3696,7 +4546,7 @@ async function onlConfirmPassNextPlayer() {
           headerBtn.onclick = () => toggleSpeechRoundCollapse(rNum);
           container.appendChild(headerBtn);
         } else if (!isFutureRound) {
-          headerBtn.innerHTML = `<span class="text-amber-400">🗣️ 第 ${rNum} 回合逆時針發言 (${speeches.length}則)</span><span class="font-mono text-amber-400 text-[10px]">${isCollapsed ? '▶ 點擊展開' : '▼ 點擊收合'}</span>`;
+          headerBtn.innerHTML = `<span class="text-amber-400">🗣️ 第 ${rNum} 回合順時針發言 (${speeches.length}則)</span><span class="font-mono text-amber-400 text-[10px]">${isCollapsed ? '▶ 點擊展開' : '▼ 點擊收合'}</span>`;
           headerBtn.onclick = () => toggleSpeechRoundCollapse(rNum);
           container.appendChild(headerBtn);
         }
@@ -3724,37 +4574,37 @@ async function onlConfirmPassNextPlayer() {
 
  let bubbleHtml = '';
  if (sp) {
- bubbleHtml = `<div class="p-2 rounded-xl text-xs max-w-[210px] sm:max-w-xs shadow-md ${isMe ? 'bg-amber-950/80 border border-amber-500/70 text-amber-200 text-left' : 'bg-neutral-900 border border-neutral-800 text-neutral-100 text-left'}">${sp.text}</div>`;
+   bubbleHtml = `<div class="p-2.5 rounded-xl text-xs max-w-[72%] sm:max-w-[75%] shadow-md break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text ${isMe ? 'bg-amber-950/80 border border-amber-500/70 text-amber-200 text-left' : 'bg-neutral-900 border border-neutral-800 text-neutral-100 text-left'}" style="overflow-wrap: anywhere; word-break: break-word;">${sp.text}</div>`;
  } else if (isCurrentSpeaking) {
- bubbleHtml = `<span class="text-xs text-amber-400 font-bold animate-pulse font-mono">打字發言中...</span>`;
+   bubbleHtml = `<span class="text-xs text-amber-400 font-bold animate-pulse font-mono flex-shrink-0">打字發言中...</span>`;
  } else {
- bubbleHtml = `<span class="text-[10px] text-neutral-600 font-mono">（等待發言）</span>`;
+   bubbleHtml = `<span class="text-[10px] text-neutral-600 font-mono flex-shrink-0">（等待發言）</span>`;
  }
 
  const row = document.createElement('div');
- // 修改8: 發言欄位上的本人顯示方式要靠右，其他人靠左
+ // 依要求1：玩家發言階段文字自動換行避免超出頁面，並自適應靠左/靠右對齊
  if (isMe) {
- row.className = "flex items-center justify-end space-x-2 py-1";
- row.innerHTML = `
- ${bubbleHtml}
- <div class="flex items-center space-x-1.5 flex-shrink-0">
- <span class="text-xs font-bold text-amber-300 font-mono">(您) ${spPlayer.name}</span>
- <div class="w-7 h-7 rounded-full ${pc.bgClass} border border-amber-400 flex items-center justify-center font-black text-xs shadow ${flashClass}">
- ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
- </div>
- </div>
- `;
+   row.className = "flex items-start justify-end space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+   row.innerHTML = `
+     ${bubbleHtml}
+     <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+       <span class="text-xs font-bold text-amber-300 font-mono">(您) ${spPlayer.name}</span>
+       <div class="w-7 h-7 rounded-full ${pc.bgClass} border border-amber-400 flex items-center justify-center font-black text-xs shadow ${flashClass}">
+         ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+       </div>
+     </div>
+   `;
  } else {
- row.className = "flex items-center justify-start space-x-2 py-1";
- row.innerHTML = `
- <div class="flex items-center space-x-1.5 flex-shrink-0">
- <div class="w-7 h-7 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-xs shadow ${flashClass}">
- ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
- </div>
- <span class="text-xs font-bold text-neutral-300 font-mono">${spPlayer.name}</span>
- </div>
- ${bubbleHtml}
- `;
+   row.className = "flex items-start justify-start space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+   row.innerHTML = `
+     <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+       <div class="w-7 h-7 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-xs shadow ${flashClass}">
+         ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+       </div>
+       <span class="text-xs font-bold text-neutral-300 font-mono">${spPlayer.name}</span>
+     </div>
+     ${bubbleHtml}
+   `;
  }
 container.appendChild(row);
  });
@@ -3856,7 +4706,7 @@ container.appendChild(row);
  if (!isVotingOpen) {
  btnSubmit.disabled = true;
  btnSubmit.className = 'w-full py-3 bg-neutral-900 border border-neutral-800 text-neutral-500 font-bold text-xs rounded-xl cursor-not-allowed';
- btnSubmit.innerText = '⏳ 逆時針發言進行中（尾家發言完畢後才開放確認投票）';
+ btnSubmit.innerText = '⏳ 順時針發言進行中（尾家發言完畢後才開放確認投票）';
  } else {
  btnSubmit.disabled = false;
  btnSubmit.className = 'w-full py-3 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-sm rounded-xl shadow-lg transition cursor-pointer active:scale-[0.99]';
@@ -4015,9 +4865,7 @@ container.appendChild(row);
         if (onlMyVoteMap[b.name] === undefined) onlMyVoteMap[b.name] = 0;
 
         let myInspectBadge = '';
-        if (isUnderAmbush) {
-          myInspectBadge = '<span class="text-[10px] bg-rose-950/80 border border-rose-800 px-1.5 py-0.5 rounded text-rose-300 font-mono font-bold ml-1">查驗為:你被偷襲</span>';
-        } else if (me && me.role === '方震') {
+        if (me && me.role === '方震') {
           myInspectBadge = ''; // 方震不顯示看不懂字樣
         } else if (myLog.inspect && myLog.inspect.length > 0) {
           const insItem = myLog.inspect.find(x => x.beastName === b.name);
@@ -4399,6 +5247,9 @@ container.appendChild(row);
  // 投票進度動態指示 (...動畫)
  startOnlinePersonVoteDotsAnimation(votedCount);
 
+ // 依要求3：鑑人階段頁面下方渲染三局獸首投票資訊、發言欄以及傳位資訊
+ renderOnlinePersonVotingReference(room);
+
  const hasMyVoted = !!pVotes[myOnlinePlayerId];
  const card = document.getElementById('onlPersonVotingCard');
  const candidatesGrid = document.getElementById('onlPersonCandidatesGrid');
@@ -4439,12 +5290,33 @@ container.appendChild(row);
  `;
  btn.onclick = () => {
  onlSelectedPersonTargetId = p.id;
- confirmWrapper.classList.remove('hidden');
- confirmBtn.className = `w-full py-3.5 rounded-xl font-black text-sm shadow-xl transition border ${pc.bgClass}`;
- confirmBtn.innerHTML = `確認指認：${pc.name}色 ${p.name} ➔`;
+ renderOnlinePersonVotingView(room, me);
  };
  candidatesGrid.appendChild(btn);
  });
+
+      // 依需求4：鑑人環節指認階段在玩家已有點擊選擇人選後，會出現同該人選顏色的確認按鍵
+      if (onlSelectedPersonTargetId) {
+        const targetP = (room.players || []).find(p => p.id === onlSelectedPersonTargetId);
+        if (targetP) {
+          const tc = COLOR_PALETTE.find(c => c.id === targetP.colorId) || COLOR_PALETTE[0];
+          if (confirmWrapper) confirmWrapper.classList.remove('hidden');
+          if (confirmBtn) {
+            confirmBtn.className = `w-full py-3.5 rounded-xl font-black text-sm shadow-xl transition cursor-pointer border ${tc.bgClass}`;
+            confirmBtn.style.backgroundColor = tc.hex;
+            if (tc.id === 'white' || tc.id === 'yellow') {
+              confirmBtn.style.color = '#0a0a0a';
+            } else {
+              confirmBtn.style.color = '#ffffff';
+            }
+            confirmBtn.innerHTML = `確認投給：${tc.name}色 ${targetP.name} ➔`;
+          }
+        } else {
+          if (confirmWrapper) confirmWrapper.classList.add('hidden');
+        }
+      } else {
+        if (confirmWrapper) confirmWrapper.classList.add('hidden');
+      }
  }
 
  // 當 8 人全員鑑人投票完成時，結算並推進至終局全覽
@@ -4452,7 +5324,181 @@ container.appendChild(row);
  executeOnlineCalculateGameOver(room);
  }
  }
-function startOnlinePersonVoteDotsAnimation(votedCount) {
+
+    // 依要求3：鑑人階段頁面下方渲染三局獸首投票資訊、發言欄以及傳位資訊供玩家參考
+    function renderOnlinePersonVotingReference(room) {
+      if (!room) return;
+
+      // 1. 三局獸首投票資訊 (包含獸首卡片、籌碼與排名真偽)
+      const beastsContainer = document.getElementById('onlPersonRefBeastsChips');
+      if (beastsContainer) {
+        beastsContainer.innerHTML = '';
+        (room.rounds || []).forEach(r => {
+          if (!r.voteResults) return;
+          const res = r.voteResults;
+          const roundBox = document.createElement('div');
+          roundBox.className = 'p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2.5';
+
+          const top2Names = new Set([
+            res.rank1 ? res.rank1.name : null,
+            res.rank2 ? res.rank2.name : null
+          ].filter(Boolean));
+
+          let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';
+          const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
+          sortedChipsBeasts.forEach(b => {
+            const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
+            const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];
+
+            let chipsRectHtml = '';
+            chips.forEach(ch => {
+              const isBlack = (ch.colorId === 'black' || ch.bgClass.includes('bg-black'));
+              const borderStyle = isBlack ? 'border border-dotted border-white shadow-xs bg-black' : `border border-black/80 shadow-xs ${ch.bgClass}`;
+              chipsRectHtml += `<span class="w-3.5 h-2 sm:w-4 sm:h-2.5 rounded-xs inline-block flex-shrink-0 ${borderStyle}" title="${ch.voterName}"></span>`;
+            });
+
+            const isTop2 = top2Names.has(b.name);
+            const beastCardBorder = isTop2 
+              ? 'border-2 border-amber-400 ring-1 ring-amber-400 shadow-md shadow-amber-950/40 bg-amber-950/20' 
+              : 'border border-neutral-800 bg-neutral-950';
+
+            let truthBadge = '';
+            if (res.rank2 && res.rank2.name === b.name) {
+              truthBadge = `<span class="text-[10px] font-black ${res.rank2.isReal ? 'text-emerald-300 bg-emerald-950/90 border border-emerald-600/70' : 'text-rose-300 bg-rose-950/90 border border-rose-600/70'} px-1.5 py-0.5 rounded mt-1 shadow-sm">🥈${res.rank2.isReal ? '【真品】' : '【贗品】'}</span>`;
+            } else if (res.rank1 && res.rank1.name === b.name) {
+              truthBadge = '<span class="text-[10px] font-bold text-amber-400 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.5 rounded mt-1">🥇秘密封存</span>';
+            }
+
+            beastsGridHtml += `
+              <div onclick="openOnlChipBallotModal(${r.roundNum}, '${b.name}')" class="p-2 rounded-xl ${beastCardBorder} hover:border-amber-400 transition cursor-pointer flex flex-col items-center justify-between min-h-[96px] shadow-sm" title="點擊檢視【${b.name}】票型">
+                <span class="text-xl font-black text-amber-300 font-mono">${b.name}</span>
+                <div class="flex items-center justify-center flex-wrap gap-1 my-1 min-h-[12px] max-w-full">
+                  ${chipsRectHtml || '<span class="text-[9px] text-neutral-600 font-mono">0票</span>'}
+                </div>
+                <span class="text-[10px] text-neutral-400 font-mono font-bold">${totalVotes} 票</span>
+                ${truthBadge}
+              </div>
+            `;
+          });
+          beastsGridHtml += '</div>';
+
+          const r1Name = res.rank1 ? res.rank1.name : '';
+          const r2Name = res.rank2 ? res.rank2.name : '';
+          const r2Real = res.rank2 ? res.rank2.isReal : false;
+
+          roundBox.innerHTML = `
+            <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
+              <span class="font-bold text-amber-400">第 ${r.roundNum} 回合獸首投票結果：</span>
+              <span class="text-[10px] text-neutral-400">點擊獸首看籌碼明細</span>
+            </div>
+            ${beastsGridHtml}
+            <div class="p-2 bg-neutral-950 border border-neutral-800 rounded-lg flex justify-between items-center text-xs mt-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-amber-400 font-bold">🥇 第 1 名：${r1Name}</span>
+                <span class="text-[10px] text-neutral-400">（秘密封存）</span>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-neutral-200 font-bold">🥈 第 2 名：${r2Name}</span>
+                <span class="font-black text-sm ${r2Real ? 'text-emerald-400' : 'text-rose-400'}">${r2Real ? '【真品】' : '【贗品】'}</span>
+              </div>
+            </div>
+          `;
+          beastsContainer.appendChild(roundBox);
+        });
+        if (beastsContainer.children.length === 0) {
+          beastsContainer.innerHTML = '<div class="text-[11px] text-neutral-500 py-1 text-center font-mono">（尚無獸首投票結果紀錄）</div>';
+        }
+      }
+
+      // 2. 三局傳位資訊 (手機傳遞順序)
+      const passOrderBox = document.getElementById('onlPersonRefPassOrder');
+      if (passOrderBox) {
+        passOrderBox.innerHTML = '';
+        (room.rounds || []).forEach(r => {
+          const passList = r.passOrder || [];
+          if (passList.length === 0) return;
+          let chipsHtml = '';
+          passList.forEach((pId, idx) => {
+            const p = (room.players || []).find(x => x.id === pId);
+            if (!p) return;
+            const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+            const isStarter = (idx === 0);
+            const isTail = (idx === passList.length - 1);
+            chipsHtml += `
+              <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-500 flex items-center justify-center font-black text-[10px] shadow flex-shrink-0 relative" title="${p.name}">
+                ${p.repChar || getRepresentativeChar(p.name)}
+                ${isStarter ? '<span class="absolute -top-1 -left-1 text-[8px] bg-amber-500 text-neutral-950 px-0.5 rounded font-black">首</span>' : ''}
+                ${isTail ? '<span class="absolute -bottom-1 -right-1 text-[8px] bg-rose-600 text-white px-0.5 rounded font-black">尾</span>' : ''}
+              </div>
+            `
+          });
+          passOrderBox.innerHTML += `
+            <div class="p-2 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-1">
+              <div class="text-[11px] font-bold text-amber-400">第 ${r.roundNum} 回合傳位順序：</div>
+              <div class="flex items-center space-x-1.5 overflow-x-auto py-1">${chipsHtml}</div>
+            </div>
+          `;
+        });
+        if (passOrderBox.children.length === 0) {
+          passOrderBox.innerHTML = '<div class="text-[11px] text-neutral-500 py-1 text-center font-mono">（尚無傳位順序紀錄）</div>';
+        }
+      }
+
+      // 3. 各回合發言欄 (發言紀錄)
+      const speechContainer = document.getElementById('onlPersonRefSpeechContainer');
+      if (speechContainer) {
+        speechContainer.innerHTML = '';
+        (room.rounds || []).forEach(r => {
+          const speeches = r.speeches || [];
+          const roundCard = document.createElement('div');
+          roundCard.className = 'p-2.5 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2';
+
+          let speechesListHtml = '';
+          if (speeches.length === 0) {
+            speechesListHtml = '<div class="text-[10px] text-neutral-500 py-1 text-center font-mono">（本回合無發言記錄）</div>';
+          } else {
+            speeches.forEach(sp => {
+              const spPlayer = (room.players || []).find(p => p.id === sp.playerId || p.id === sp.speakerId);
+              const pc = spPlayer ? (COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];
+              const name = sp.speakerName || (spPlayer ? spPlayer.name : '玩家');
+              const isMe = (sp.playerId === myOnlinePlayerId || sp.speakerId === myOnlinePlayerId);
+
+              speechesListHtml += `
+                <div class="flex items-start space-x-2 py-1 border-b border-neutral-800/50 last:border-0">
+                  <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-[10px] flex-shrink-0 mt-0.5" title="${name}">
+                    ${getRepresentativeChar(name)}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center space-x-1.5">
+                      <span class="text-[11px] font-bold text-neutral-300">${name}</span>
+                      <span class="text-[9px] ${pc.bgClass} px-1 rounded text-neutral-950 font-black">${pc.name}色</span>
+                      ${isMe ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded">我</span>' : ''}
+                      ${sp.time ? `<span class="text-[9px] text-neutral-500 font-mono ml-auto">${sp.time}</span>` : ''}
+                    </div>
+                    <div class="text-xs text-neutral-200 mt-0.5 leading-relaxed bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80 break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text" style="overflow-wrap: anywhere; word-break: break-word;">
+                      ${sp.text}
+                    </div>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          roundCard.innerHTML = `
+            <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
+              <span class="font-bold text-amber-400">📜 第 ${r.roundNum} 回合發言紀錄 (${speeches.length} 則)：</span>
+            </div>
+            <div class="space-y-1 max-h-60 overflow-y-auto pr-1">${speechesListHtml}</div>
+          `;
+          speechContainer.appendChild(roundCard);
+        });
+        if (speechContainer.children.length === 0) {
+          speechContainer.innerHTML = '<div class="text-[11px] text-neutral-500 py-1 text-center font-mono">（尚無發言記錄）</div>';
+        }
+      }
+    }
+
+    function startOnlinePersonVoteDotsAnimation(votedCount) {
  if (onlAnimDotsTimer) clearInterval(onlAnimDotsTimer);
  const badge = document.getElementById('onlPersonVoteProgressBadge');
  const notice = document.getElementById('onlPersonVoteSubmittedProgress');
@@ -4507,14 +5553,22 @@ function startOnlinePersonVoteDotsAnimation(votedCount) {
  let totalScore = 0;
  let realSavedCount = 0;
 
- // 1\~3回合若有一個【真品】則加一分 (修改10)
+ // 依要求8：1~3回合若有真品則加一分，並記錄救下之真品獸首名稱
+ const savedRealBeastNames = [];
  room.rounds.forEach(r => {
  if (r.voteResults) {
- if (r.voteResults.rank1 && r.voteResults.rank1.isReal) realSavedCount++;
- if (r.voteResults.rank2 && r.voteResults.rank2.isReal) realSavedCount++;
+ if (r.voteResults.rank1 && r.voteResults.rank1.isReal) {
+ realSavedCount++;
+ savedRealBeastNames.push(r.voteResults.rank1.name);
+ }
+ if (r.voteResults.rank2 && r.voteResults.rank2.isReal) {
+ realSavedCount++;
+ savedRealBeastNames.push(r.voteResults.rank2.name);
+ }
  }
  });
  totalScore += realSavedCount;
+ const savedRealBeastsSuffix = savedRealBeastNames.length > 0 ? `(${savedRealBeastNames.join('.')})` : '';
 
  const goodRoles = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'];
  const goodPlayers = room.players.filter(p => goodRoles.includes(p.role));
@@ -4523,11 +5577,12 @@ function startOnlinePersonVoteDotsAnimation(votedCount) {
  const fangPlayer = room.players.find(p => p.role === '方震');
  const xuPlayer = room.players.find(p => p.role === '許願');
 
- // 若【許願】【方震】【姬雲浮】【黃煙煙】【木戶加奈】能夠以絕對多票投到【老朝奉】則加一分
+ // 依要求6：老朝奉投票採取絕對多數，故許願陣營（5人）要有三人投中才算 (>= 3 票)
  let laoCaught = false;
+ let votesForLao = 0;
  if (laoPlayer) {
- const votesForLao = goodPlayers.filter(p => (room.personVotes || {})[p.id] === laoPlayer.id).length;
- laoCaught = votesForLao > (goodPlayers.length / 2);
+ votesForLao = goodPlayers.filter(p => (room.personVotes || {})[p.id] === laoPlayer.id).length;
+ laoCaught = (votesForLao >= 3);
  if (laoCaught) totalScore += 1;
  }
 
@@ -4556,37 +5611,46 @@ function startOnlinePersonVoteDotsAnimation(votedCount) {
  totalScore: totalScore,
  winningCamp: winningCampName,
  savedBeastsCount: realSavedCount,
+ savedBeastsSuffix: savedRealBeastsSuffix,
  laoCaught: laoCaught,
+ votesForLao: votesForLao,
  fangCaught: fangCaught,
  xuCaught: xuCaught,
  durationMinutes: Math.max(1, elapsed)
  };
 
- const hasMockPlayers = (room.players || []).some(p => p.id && p.id.startsWith('mock_p_'));
-
+ // 依要求9：強制將鑑人投票 personVotes 寫入資料庫，影響計分並展示於明細與軌跡
  await db.doc(ONLINE_ROOM_DOC).update({
  status: 'gameover',
- gameOverData: gameOverData
+ gameOverData: gameOverData,
+ personVotes: room.personVotes || {},
+ lastActivityTime: Date.now()
  });
  }
 
  // 渲染線上版終局畫面
  function renderOnlineGameOverView(room, me) {
+ updateGameOverRestartButton(room, me);
+ if (window._currentGameOverRenderedId === (room.startTimestamp || 'done')) {
+   return;
+ }
+ window._currentGameOverRenderedId = (room.startTimestamp || 'done');
  const gData = room.gameOverData || { totalScore: 0, winningCamp: '許願陣營' };
  const isXuWon = gData.winningCamp === '許願陣營';
  const banner = document.getElementById('onlFinalScoreBanner');
 
  // 得分明細計算 (與小幫手完全一致)
  let scoreDetailsHtml = '';
+ const votesForLao = gData.votesForLao !== undefined ? gData.votesForLao : 0;
  scoreDetailsHtml += `
  <div class="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800/80">
- <div class="font-bold text-neutral-200 text-sm">• 鑒寶環節共得到 <span class="text-blue-400 font-black text-base">${gData.savedBeastsCount || 0}分</span></div>
+ <div class="font-bold text-neutral-200 text-sm">• 鑒寶環節共得到 <span class="text-blue-400 font-black text-base">${gData.savedBeastsCount || 0}分${gData.savedBeastsSuffix || ''}</span></div>
  </div>
  `;
  scoreDetailsHtml += `
  <div class="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800/80">
- <div class="font-bold text-neutral-200 text-sm">• ${gData.laoCaught ? '老朝奉被找到' : '老朝奉沒有被找到'}</div>
- <div class="text-xs text-neutral-400 mt-0.5 pl-3.5">許願方陣營加<span class="${gData.laoCaught ? 'text-blue-400 font-black' : 'text-red-500 font-bold'} text-sm">${gData.laoCaught ? '1分' : '0分'}</span></div>
+ <div class="font-bold text-neutral-200 text-sm">• 老朝奉${gData.laoCaught ? `被找到 (加1分)(${votesForLao}/5)` : `沒有被找到 (加0分)(${votesForLao}/5)`}</div>
+ <div class="text-xs text-neutral-400 mt-0.5 pl-3.5">若許願方陣營投中老朝奉加一分：<span class="${gData.laoCaught ? 'text-blue-400 font-black' : 'text-red-500 font-bold'} text-sm">${gData.laoCaught ? '1分' : '0分'}</span></div>
  </div>
  `;
  scoreDetailsHtml += `
@@ -4794,9 +5858,9 @@ pDiv.innerHTML = `
  });
  }
 
- async function resetOnlineRoom() {
+ async function closeOnlineRoom() {
       if (!isFirebaseReady || !db) return;
-      if (!confirm('確定要強制停止並重置線上房間嗎？所有進行中對局將停止，全員回到等待大廳。')) return;
+      if (!confirm('確定要關閉此線上房間嗎？所有進行中的資料將被清空並退出。')) return;
       try {
         await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
         try {
@@ -4804,11 +5868,13 @@ pDiv.innerHTML = `
         } catch(e) {}
         clearAllCookies();
         resetAllOnlineClientState();
-        showOnlineSubView('onlSecLobby');
+        selectAppMode('mode_picker');
       } catch(e) {
-        console.error('重置房間失敗:', e);
+        console.error('關閉房間失敗:', e);
       }
     }
+    window.closeOnlineRoom = closeOnlineRoom;
+    window.resetOnlineRoom = handleGameOverReturnToLobby;
 
     async function addMockPlayersToLobby() {
       if (!isFirebaseReady || !db) return;
@@ -4819,18 +5885,23 @@ pDiv.innerHTML = `
         let data = snap.exists ? snap.data() : (onlineRoomData || {});
         let players = data.players ? [...data.players] : [];
 
-        let me = players.find(p => p.id === myOnlinePlayerId);
+        // 依要求1：根據實體玩家數量，將虛擬玩家填入剩餘空位至滿 8 人
+        const isHuman = (p) => p && p.id && !p.id.startsWith('mock_p_');
+        let humanPlayers = players.filter(isHuman);
+
+        // 確保自己在此實體玩家名單中
+        let me = humanPlayers.find(p => p.id === myOnlinePlayerId);
         if (!me) {
           const myName = myOnlinePlayerName || '玩家 1';
           const rep = getRepresentativeChar(myName);
-          const usedColors = new Set(players.map(p => p.colorId));
+          const usedColors = new Set(humanPlayers.map(p => p.colorId));
           const myColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[0];
           me = {
             id: myOnlinePlayerId,
             name: myName,
             repChar: rep,
             colorId: myColor.id,
-            seatIndex: players.length,
+            seatIndex: humanPlayers.length,
             readyToStart: true,
             role: '',
             roleConfirmed: true,
@@ -4838,24 +5909,27 @@ pDiv.innerHTML = `
             isPermanentlyAmbushed: false,
             confusedRound: null
           };
-          players.push(me);
+          humanPlayers.push(me);
         } else {
           me.readyToStart = true;
         }
 
-        const neededCount = 8 - players.length;
+        // 根據實體玩家數量計算剩餘空位
+        const neededCount = 8 - humanPlayers.length;
+        const allPlayers = [...humanPlayers];
+
         if (neededCount > 0) {
           const shuffledWarlords = [...WARLORD_MOCK_NAMES].sort(() => Math.random() - 0.5);
-          const usedNames = new Set(players.map(p => p.name));
-          const usedColors = new Set(players.map(p => p.colorId));
-          const usedSeats = new Set(players.map(p => p.seatIndex));
+          const usedNames = new Set(humanPlayers.map(p => p.name));
+          const usedColors = new Set(humanPlayers.map(p => p.colorId));
+          const usedSeats = new Set(humanPlayers.map(p => p.seatIndex));
 
           let added = 0;
           for (const warlordName of shuffledWarlords) {
             if (added >= neededCount) break;
             if (usedNames.has(warlordName)) continue;
 
-            const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];
+            const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[allPlayers.length % 8];
             usedColors.add(availColor.id);
             usedNames.add(warlordName);
 
@@ -4868,7 +5942,7 @@ pDiv.innerHTML = `
               }
             }
 
-            players.push({
+            allPlayers.push({
               id: 'mock_p_' + Date.now() + '_' + (added + 1),
               name: warlordName,
               repChar: getRepresentativeChar(warlordName),
@@ -4885,9 +5959,12 @@ pDiv.innerHTML = `
           }
         }
 
-        await docRef.update({ players: players });
+        await docRef.update({
+          players: allPlayers,
+          lastActivityTime: Date.now()
+        });
       } catch(e) {
-        console.error('一鍵補齊武將失敗:', e);
+        console.error('塞滿電腦玩家失敗:', e);
       }
     }
     window.addMockPlayersToLobby = addMockPlayersToLobby;
@@ -4897,33 +5974,62 @@ pDiv.innerHTML = `
       const countdownNum = document.getElementById('onlCountdownNum');
       if (!countdownBox || !countdownNum) return;
 
-      if (_lobbyCountdownTimer) return;
+      if (_lobbyCountdownTimer || _lobbyCountdownPendingStart) return;
+      _lobbyCountdownPendingStart = true;
 
       countdownBox.classList.remove('hidden');
-      _lobbyCountdownVal = 3;
-      countdownNum.innerText = String(_lobbyCountdownVal);
+      countdownNum.innerText = '準備';
+      countdownNum.className = 'text-3xl font-black text-amber-400 my-1 animate-pulse';
 
-      speak('遊戲即將開始，請確認座位順序');
+      // 依要求5：開始遊戲語音念完「遊戲即將開始」後再啟動 3, 2, 1 倒數機制
+      speak('遊戲即將開始', () => {
+        if (!_lobbyCountdownPendingStart) return;
+        _lobbyCountdownPendingStart = false;
 
-      _lobbyCountdownTimer = setInterval(async () => {
-        _lobbyCountdownVal--;
-        if (_lobbyCountdownVal > 0) {
-          countdownNum.innerText = String(_lobbyCountdownVal);
-          speak(String(_lobbyCountdownVal));
-        } else {
-          clearInterval(_lobbyCountdownTimer);
-          _lobbyCountdownTimer = null;
-          countdownBox.classList.add('hidden');
-          await executeOnlineStartDeal(room);
-        }
-      }, 1000);
+        _lobbyCountdownVal = 3;
+        countdownNum.innerText = String(_lobbyCountdownVal);
+        countdownNum.className = 'text-5xl font-black text-amber-400 font-mono my-1 animate-pulse';
+        speak('3');
+
+        _lobbyCountdownTimer = setInterval(async () => {
+          _lobbyCountdownVal--;
+          if (_lobbyCountdownVal > 0) {
+            countdownNum.innerText = String(_lobbyCountdownVal);
+            speak(String(_lobbyCountdownVal));
+          } else {
+            clearInterval(_lobbyCountdownTimer);
+            _lobbyCountdownTimer = null;
+            countdownBox.classList.add('hidden');
+
+            // 依要求1：線上版倒數完進入遊戲之間的空檔時間，按鈕會顯示字樣"分配角色中..."
+            window._isDealingRoles = true;
+            const startBtn = document.getElementById('btnOnlReadyStart');
+            if (startBtn) {
+              startBtn.disabled = true;
+              startBtn.className = "w-full py-4 bg-amber-600/80 text-neutral-950 font-black text-lg rounded-xl shadow-xl transition cursor-wait animate-pulse";
+              startBtn.innerHTML = "分配角色中...";
+              startBtn.onclick = null;
+            }
+            const waitingNotice = document.getElementById('onlWaitingNotice');
+            if (waitingNotice) {
+              waitingNotice.innerText = "分配角色中...";
+            }
+
+            await executeOnlineStartDeal(room);
+          }
+        }, 1000);
+      });
     }
 
     function stopLobbyCountdown() {
+      _lobbyCountdownPendingStart = false;
       if (_lobbyCountdownTimer) {
         clearInterval(_lobbyCountdownTimer);
         _lobbyCountdownTimer = null;
       }
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      } catch(e) {}
       const countdownBox = document.getElementById('onlStartCountdownOverlay');
       if (countdownBox) countdownBox.classList.add('hidden');
     }
@@ -5008,41 +6114,73 @@ pDiv.innerHTML = `
  let _lastMockActionTime = 0;
  let _mockActionPending = false;
 
- // 心跳看門狗：每 1.2 秒檢測一次狀態，及時驅動虛擬玩家
+ // 心跳看門狗：及時驅動虛擬玩家
+ // 依要求：發言階段維持正常舒適閱讀節奏(約1.2秒)，其他非發言階段全面提速至 400ms 快速響應
+ let _lastWatchdogDiscussionCheck = 0;
  setInterval(async () => {
  if (currentAppMode !== 'online' || !onlineRoomData || !myOnlinePlayerId) return;
  const room = onlineRoomData;
+
+ const now = Date.now();
+
+ // 依要求2：伺服器/心跳監控一小時內無動作強制關閉並清空資料庫 (1小時 = 3600000 毫秒)
+ const ONE_HOUR_MS = 60 * 60 * 1000;
+ let lastActionTime = room.lastActivityTime;
+ if (!lastActionTime && room.createdAt) {
+   lastActionTime = room.createdAt.toMillis ? room.createdAt.toMillis() : (typeof room.createdAt === 'number' ? room.createdAt : null);
+ }
+ if (!lastActionTime && room.startTimestamp) {
+   lastActionTime = room.startTimestamp;
+ }
+ if (lastActionTime && (now - lastActionTime > INACTIVE_TIMEOUT_MS)) {
+   console.warn('⚠️ 該房間超過 1 小時無任何動作，強制關閉並清空資料');
+   if (isFirebaseReady && db) {
+     initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
+   }
+   clearAllCookies();
+   resetAllOnlineClientState();
+   alert('⚠️ 該房間已超過 29 分鐘無任何動作，系統已強制關閉並清空資料！');
+   selectAppMode('mode_picker');
+   return;
+ }
+
+ // 依要求1：發言階段維持正常閱讀節奏，避免電腦發言瞬間刷過
+ if (room.status === 'discussion' && (now - _lastWatchdogDiscussionCheck < 1200)) {
+   return;
+ }
+ if (room.status === 'discussion') {
+   _lastWatchdogDiscussionCheck = now;
+ }
 
  // 房內首位真人負責驅動
  const firstHuman = (room.players || []).find(p => !p.id.startsWith('mock_p_'));
  if (firstHuman && firstHuman.id !== myOnlinePlayerId) return;
 
- const curRoundIdx = room.currentRoundIdx || 0;
+ const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
  const curRound = room.rounds ? room.rounds[curRoundIdx] : null;
- if (!curRound) return;
+ if (!curRound && room.status !== 'person_voting') return;
 
- const now = Date.now();
- // 防死鎖：若單次鎖定超過 5.5 秒，強制解鎖
- if (_mockActionPending && (now - _lastMockActionTime > 5500)) {
+ // 防死鎖：若單次鎖定超過 4 秒，強制解鎖
+ if (_mockActionPending && (now - _lastMockActionTime > 4000)) {
  _mockActionPending = false;
  }
  if (_mockActionPending) return;
 
- // 1. 查驗行動階段：當前輪到電腦玩家
+ // 1. 查驗行動階段：當前輪到電腦玩家 (加速)
  if (room.status === 'playing' && room.currentTurnPlayerId && room.currentTurnPlayerId.startsWith('mock_p_')) {
  await executeMockTurnStep(room, room.currentTurnPlayerId, curRound);
  return;
  }
 
- // 2. 自由發言階段：當前輪到電腦玩家發言
+ // 2. 自由發言階段：當前輪到電腦玩家發言 (除發言階段外其他皆加速，發言維持原速)
  if (room.status === 'discussion' && room.currentSpeakerId && room.currentSpeakerId.startsWith('mock_p_')) {
  await executeMockSpeechStep(room, room.currentSpeakerId, curRound);
  return;
  }
 
- // 3. 個人鑑寶投票階段：有電腦玩家未投票
+ // 3. 個人鑑寶投票階段：有電腦玩家未投票 (加速)
  if (room.status === 'voting') {
- const votes = curRound.votes || {};
+ const votes = (curRound && curRound.votes) ? curRound.votes : {};
  const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !votes[p.id]);
  if (unvotedMock) {
  await executeMockVoteStep(room, unvotedMock.id, curRound);
@@ -5050,7 +6188,7 @@ pDiv.innerHTML = `
  }
  }
 
- // 4. 鑑人投票階段：有電腦玩家未投票
+ // 4. 鑑人投票階段：有電腦玩家未投票 (加速)
  if (room.status === 'person_voting') {
  const pVotes = room.personVotes || {};
  const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !pVotes[p.id]);
@@ -5059,14 +6197,14 @@ pDiv.innerHTML = `
  return;
  }
  }
- }, 1200);
+ }, 400);
 
  async function executeMockTurnStep(room, mockPlayerId, curRound) {
  _mockActionPending = true;
  _lastMockActionTime = Date.now();
 
- // 延遲 1.2 \~ 2.2 秒模擬思考
- const delay = 1200 + Math.floor(Math.random() * 1000);
+ // 速度優化：查驗行動延遲由 1.2~2.2s 優化至 200~350ms，保持順暢過渡與動畫
+ const delay = 200 + Math.floor(Math.random() * 150);
  setTimeout(async () => {
  try {
  const freshSnap = await db.doc(ONLINE_ROOM_DOC).get();
@@ -5117,10 +6255,18 @@ pDiv.innerHTML = `
 
  await db.doc(ONLINE_ROOM_DOC).update({
  currentTurnPlayerId: nextP.id,
- rounds: freshRoom.rounds
+ rounds: freshRoom.rounds,
+ lastActivityTime: Date.now()
  });
+
+ // 速度優化：若下一位仍是電腦玩家，直接連續推進，不必空等看門狗輪詢
+ if (nextP.id.startsWith('mock_p_')) {
+ setTimeout(() => {
+ executeMockTurnStep(freshRoom, nextP.id, roundObj);
+ }, 100);
+ }
  } else {
- // 全員查驗完畢，前往鑑寶逆時針發言 (修改5: 從尾家左手邊起發言)
+ // 全員查驗完畢，前往鑑寶順時針發言 (修改5: 從尾家左手邊起發言)
  roundObj.passOrder = passOrder;
  const tailPlayerId = passOrder[passOrder.length - 1];
  const tailPlayer = freshRoom.players.find(p => p.id === tailPlayerId);
@@ -5145,7 +6291,8 @@ pDiv.innerHTML = `
  await db.doc(ONLINE_ROOM_DOC).update({
  status: 'discussion',
  currentSpeakerId: speechOrder[0],
- rounds: freshRoom.rounds
+ rounds: freshRoom.rounds,
+ lastActivityTime: Date.now()
  });
  }
  } catch(e) {
@@ -5206,13 +6353,15 @@ pDiv.innerHTML = `
  await db.doc(ONLINE_ROOM_DOC).update({
  status: 'voting',
  currentSpeakerId: null,
- rounds: freshRoom.rounds
+ rounds: freshRoom.rounds,
+ lastActivityTime: Date.now()
  });
  } else {
  const nextSpeakerId = speechOrder[nextIdx];
  await db.doc(ONLINE_ROOM_DOC).update({
  currentSpeakerId: nextSpeakerId,
- rounds: freshRoom.rounds
+ rounds: freshRoom.rounds,
+ lastActivityTime: Date.now()
  });
  }
  } catch(e) {
@@ -5227,7 +6376,8 @@ pDiv.innerHTML = `
       _mockActionPending = true;
       _lastMockActionTime = Date.now();
 
-      const delay = 600 + Math.floor(Math.random() * 600);
+      // 速度優化：鑑寶投票延遲由 600~1200ms 調降至 120~250ms
+      const delay = 120 + Math.floor(Math.random() * 130);
       setTimeout(async () => {
         try {
           const freshSnap = await db.doc(ONLINE_ROOM_DOC).get();
@@ -5254,7 +6404,8 @@ pDiv.innerHTML = `
           roundObj.votes[mockPlayerId] = { ...voteMap };
 
           await db.doc(ONLINE_ROOM_DOC).update({
-            rounds: freshRoom.rounds
+            rounds: freshRoom.rounds,
+            lastActivityTime: Date.now()
           });
         } catch(e) {
           console.error('虛擬玩家鑑寶投票失敗:', e);
@@ -5268,7 +6419,8 @@ pDiv.innerHTML = `
  _mockActionPending = true;
  _lastMockActionTime = Date.now();
 
- const delay = 800 + Math.floor(Math.random() * 800);
+ // 速度優化：鑑人投票延遲由 800~1600ms 調降至 120~250ms
+ const delay = 120 + Math.floor(Math.random() * 130);
  setTimeout(async () => {
  try {
  const freshSnap = await db.doc(ONLINE_ROOM_DOC).get();
@@ -5285,7 +6437,8 @@ pDiv.innerHTML = `
  }
 
  await db.doc(ONLINE_ROOM_DOC).update({
- personVotes: freshRoom.personVotes
+ personVotes: freshRoom.personVotes,
+ lastActivityTime: Date.now()
  });
  } catch(e) {
  console.error('虛擬玩家鑑人投票失敗:', e);
@@ -5400,24 +6553,35 @@ pDiv.innerHTML = `
     }, 150);
   }
 
-  window.addEventListener('beforeunload', () => {
-      try {
-        if (currentAppMode === 'online' && onlineRoomData && isFirebaseReady && db) {
-          const players = onlineRoomData.players ? [...onlineRoomData.players] : [];
-          const remainingHumans = players.filter(p => p.id !== myOnlinePlayerId && !p.id.startsWith('mock_p_'));
-          if (remainingHumans.length === 0) {
-            // 房內已無真人玩家，自動刪除清空該房間資料
-            initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
-          }
-        }
-      } catch(e) {}
+      // 依要求2：重新整理網頁絕不會被踢出房間或清空房間
+    window.addEventListener('beforeunload', () => {
+      // 保持房間狀態與身分，重新整理後自動重連
     });
 
     window.addEventListener('DOMContentLoaded', () => {
       loadState();
       autoWipeDatabaseOnce();
       checkWatermarkUploadedState();
-      selectAppMode('mode_picker');
+
+      // 依要求2：網頁重新整理並不會被踢出房間，自動重新連接並回到原本所在對局階段！
+      const savedMode = sessionStorage.getItem('gudong_selected_app_mode');
+      const savedRoomCode = sessionStorage.getItem('gudong_online_room_code');
+      const savedPlayerId = sessionStorage.getItem('gudong_online_my_id');
+      const savedPlayerName = localStorage.getItem('gudong_online_my_name');
+
+      if (savedMode === 'online' && savedPlayerId && savedPlayerName) {
+        myOnlinePlayerName = savedPlayerName;
+        currentOnlineRoomCode = savedRoomCode || '8888';
+        myOnlinePlayerId = savedPlayerId;
+        ONLINE_ROOM_DOC = resolveOnlineRoomDoc();
+        currentAppMode = 'online';
+        applyAppModeView();
+        window._hasEverJoinedLobby = true;
+        showOnlineSubView('onlSecLobby');
+        startOnlineRoomListener();
+      } else {
+        selectAppMode('mode_picker');
+      }
     });
 function saveState() {
  try {
@@ -5732,9 +6896,13 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
 
  let roleList = ['許願', '方震', '黃煙煙', '木戶加奈', '老朝奉', '藥不然', '鄭國渠'];
  if (G.playerCount >= 8) {
- roleList.push('姬雲浮');
+   roleList.push('姬雲浮');
  }
- roleList.sort(() => Math.random() - 0.5);
+ // Fisher-Yates 嚴格洗牌，確保隨機且不重複
+ for (let i = roleList.length - 1; i > 0; i--) {
+   const j = Math.floor(Math.random() * (i + 1));
+   [roleList[i], roleList[j]] = [roleList[j], roleList[i]];
+ }
 
  G.eggBlackHeibao = Math.random() < 0.10;
  G.eggWhiteBaihu = Math.random() < 0.10;
@@ -6059,7 +7227,7 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
 
  btn.innerHTML = `
  <span class="text-3xl font-black text-amber-300">${b.name}</span>
- <span class="text-[9px] text-neutral-400 mt-1">${isChosen ? '已查驗' : (isLocked ? '已鎖定' : `第 ${sIdx + 1} 位`)}</span>
+ <span class="text-[9px] text-neutral-400 mt-1">${isChosen ? '已查驗' : (isLocked ? '已鎖定' : '')}</span>
  `;
 
  if (!cannotClick) {
@@ -6105,7 +7273,7 @@ ${isDup ? '<span class="text-[10px] text-rose-400 font-bold bg-rose-950 px-1 py-
  let isBlockedByZheng = false;
 
  if (isUnderAmbush) {
- const ambushTexts = ['你眼前一片黑', '你被幹了', '你被偷襲了', '獸首被偷襲'];
+ const ambushTexts = ['你被偷襲', '獸首被偷襲', '你眼前一片黑', '你被幹了', '你失血過多，有點暈眩'];
  displayText = ambushTexts[Math.floor(Math.random() * ambushTexts.length)];
  } else if (curP.role === '方震') {
  if (!G.fangZhenClickCounts) G.fangZhenClickCounts = {};
@@ -6964,7 +8132,13 @@ if (isReal) {
  const chosenPlayer = G.players.find(p => p.id === G.pendingCandidateId);
  const chosenColor = COLOR_PALETTE.find(x => x.id === chosenPlayer.colorId) || COLOR_PALETTE[0];
  confirmWrapper.classList.remove('hidden');
- confirmBtn.className = `w-full py-3.5 rounded-xl font-black text-sm shadow-xl transition border ${chosenColor.bgClass}`;
+ confirmBtn.className = `w-full py-3.5 rounded-xl font-black text-sm shadow-xl transition border cursor-pointer ${chosenColor.bgClass}`;
+      confirmBtn.style.backgroundColor = chosenColor.hex;
+      if (chosenColor.id === 'white' || chosenColor.id === 'yellow') {
+        confirmBtn.style.color = '#0a0a0a';
+      } else {
+        confirmBtn.style.color = '#ffffff';
+      }
  confirmBtn.innerHTML = `確認投給：${getColorDisplayName(chosenPlayer.colorId)} ${chosenPlayer.name} ➔`;
  // 修改2: 移除鑑人點選自動下滑
  } else {
@@ -8477,6 +9651,14 @@ const inspectStr = (rData.inspect && rData.inspect.length > 0) ? rData.inspect.j
  全域畫面路由器
  ============================================================ */
  function renderAll() {
+ if (currentAppMode !== 'local') {
+   const localSections = ['secSetup', 'secRoleReveal', 'secHandover', 'secPlayerTurn', 'secVoting', 'secPersonHandover', 'secPersonVoting', 'secGameOver'];
+   localSections.forEach(id => {
+     const el = document.getElementById(id);
+     if (el) el.classList.add('hidden');
+   });
+   return;
+ }
  document.getElementById('secSetup').classList.toggle('hidden', G.step !== 'setup');
  document.getElementById('secRoleReveal').classList.toggle('hidden', G.step !== 'roles');
  document.getElementById('secHandover').classList.toggle('hidden', G.step !== 'handover');
@@ -8548,31 +9730,79 @@ const inspectStr = (rData.inspect && rData.inspect.length > 0) ? rData.inspect.j
  </script>
 
  <!-- 重新開局線上表決彈窗 (5票以上同意重新開局) -->
- <div id="onlRestartVoteModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
- <div class="bg-neutral-900 border-2 border-amber-600/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 text-center">
- <div class="w-12 h-12 mx-auto rounded-full bg-amber-950 border border-amber-500 flex items-center justify-center text-2xl">
- ⚠️
- </div>
- <div>
- <h3 id="onlRestartModalTitle" class="text-base font-black text-amber-300">玩家提議重新開局</h3>
- <p class="text-xs text-neutral-300 mt-1">需達到 <b>5 票以上</b> 同意才會重新開局並返回模式選擇頁面。</p>
-        <p id="onlRestartTimeoutTip" class="text-[11px] text-amber-400 font-bold mt-1.5">⏱️ 表決倒數 60 秒（超過 1 分鐘未決將自動強制關閉本局並清空資料）</p>
- </div>
+ <!-- 重新開局線上表決彈窗 -->
+  <div id="onlRestartVoteModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-amber-600/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 text-center">
+      <div class="w-12 h-12 mx-auto rounded-full bg-amber-950 border border-amber-500 flex items-center justify-center text-2xl">
+        🔄
+      </div>
+      <div>
+        <h3 id="onlRestartModalTitle" class="text-base font-black text-amber-300">玩家提議重新開局</h3>
+        <p id="onlRestartModalDesc" class="text-xs text-neutral-300 mt-1">是否同意重新開局？（達 4 票同意即可立即重新開局）</p>
+        <p id="onlRestartTimeoutTip" class="text-[11px] text-amber-400 font-bold mt-1.5">⏱️ 表決倒數 60 秒（若超時未決將自動取消提議）</p>
+      </div>
 
- <div class="p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-xs space-y-1 font-mono">
- <div class="flex justify-between text-neutral-300">
- <span>目前同意票數：</span>
- <span id="onlRestartYesCount" class="font-black text-emerald-400 text-sm">1 / 8</span>
- </div>
- <div class="flex justify-between text-neutral-400">
- <span>反對票數：</span>
- <span id="onlRestartNoCount" class="text-rose-400">0</span>
- </div>
- </div>
+      <div class="p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-xs space-y-1 font-mono">
+        <div class="flex justify-between text-neutral-300">
+          <span>目前同意票數：</span>
+          <span id="onlRestartYesCount" class="font-black text-emerald-400 text-sm">0 / 4</span>
+        </div>
+        <div class="flex justify-between text-neutral-400">
+          <span>反對票數：</span>
+          <span id="onlRestartNoCount" class="text-rose-400">0</span>
+        </div>
+      </div>
 
- <div id="onlRestartVoteActionBtns" class="grid grid-cols-2 gap-2 pt-1">
- <button type="button" onclick="onlCastRestartVote(true)" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-black text-xs rounded-xl shadow transition">
- ✅ 同意重開
- </button>
- <button type="button" onclick="onlCastRestartVote(false)" class="py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs rounded-xl border border-neutral-700 transition">
- ❌ 反
+      <div id="onlRestartVoteActionBtns" class="grid grid-cols-2 gap-2 pt-1">
+        <button type="button" onclick="onlCastRestartVote(true)" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-black text-sm rounded-xl shadow transition cursor-pointer">
+          是
+        </button>
+        <button type="button" onclick="onlCastRestartVote(false)" class="py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-sm rounded-xl border border-neutral-700 transition cursor-pointer">
+          否
+        </button>
+      </div>
+      <div id="onlRestartVotedTip" class="hidden text-xs text-amber-400 font-bold py-2">
+        ✓ 您已完成表決，正在等待其他真人玩家...
+      </div>
+    </div>
+  </div>
+
+  <!-- 關閉房間線上表決彈窗 -->
+  <div id="onlCloseVoteModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-rose-600/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 text-center">
+      <div class="w-12 h-12 mx-auto rounded-full bg-rose-950 border border-rose-500 flex items-center justify-center text-2xl">
+        🚪
+      </div>
+      <div>
+        <h3 id="onlCloseModalTitle" class="text-base font-black text-rose-300">玩家提議關閉房間</h3>
+        <p id="onlCloseModalDesc" class="text-xs text-neutral-300 mt-1">是否同意關閉房間？（真人玩家超過半數同意即立即關閉房間並返回首頁）</p>
+        <p id="onlCloseTimeoutTip" class="text-[11px] text-amber-400 font-bold mt-1.5">⏱️ 表決倒數 60 秒（若超時未決將自動取消提議）</p>
+      </div>
+
+      <div class="p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-xs space-y-1 font-mono">
+        <div class="flex justify-between text-neutral-300">
+          <span>目前同意票數：</span>
+          <span id="onlCloseYesCount" class="font-black text-emerald-400 text-sm">1 / 8</span>
+        </div>
+        <div class="flex justify-between text-neutral-400">
+          <span>反對票數：</span>
+          <span id="onlCloseNoCount" class="text-rose-400">0</span>
+        </div>
+      </div>
+
+      <div id="onlCloseVoteActionBtns" class="grid grid-cols-2 gap-2 pt-1">
+        <button type="button" onclick="onlCastCloseVote(true)" class="py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-sm rounded-xl shadow transition cursor-pointer">
+          是
+        </button>
+        <button type="button" onclick="onlCastCloseVote(false)" class="py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-sm rounded-xl border border-neutral-700 transition cursor-pointer">
+          否
+        </button>
+      </div>
+      <div id="onlCloseVotedTip" class="hidden text-xs text-amber-400 font-bold py-2">
+        ✓ 您已完成表決，正在等待其他真人玩家...
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
