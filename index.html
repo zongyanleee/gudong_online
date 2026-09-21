@@ -20,6 +20,12 @@
 
  <style>
  :root {
+  --taste-bg: #0a0a0a;
+  --taste-gold: #f59e0b;
+  --taste-gold-border: rgba(245, 158, 11, 0.4);
+  --taste-wm-opacity: 0.18;
+  --taste-ornament: 1;
+
  --taste-bg: #0a0a0a;
  --taste-gold: #f59e0b;
  --taste-wm-opacity: 0.18;
@@ -85,7 +91,55 @@
  -webkit-user-select: none;
  user-select: none;
  }
- .speech-bubble-text {
+ /* 硬體加速過渡與無聲視覺回饋 (GPU Composite Layers) */
+  @keyframes slideInFromRight {
+    0% { transform: translate3d(100%, 0, 0); opacity: 0; }
+    100% { transform: translate3d(0, 0, 0); opacity: 1; }
+  }
+  @keyframes slideOutToLeft {
+    0% { transform: translate3d(0, 0, 0); opacity: 1; }
+    100% { transform: translate3d(-100%, 0, 0); opacity: 0; }
+  }
+  @keyframes scaleDownBoardClear {
+    0% { transform: scale3d(1, 1, 1); opacity: 1; }
+    40% { transform: scale3d(0.92, 0.92, 1); opacity: 0.4; }
+    100% { transform: scale3d(1, 1, 1); opacity: 1; }
+  }
+  @keyframes myTurnBreathingGlow {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 32px rgba(245, 158, 11, 0.95), inset 0 0 20px rgba(245, 158, 11, 0.45);
+      border-color: rgba(251, 191, 36, 1);
+    }
+  }
+
+  .slide-in-view {
+    animation: slideInFromRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+  .slide-out-view {
+    animation: slideOutToLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+  .scale-down-clear {
+    animation: scaleDownBoardClear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+  .my-turn-active-glow {
+    animation: myTurnBreathingGlow 1.8s ease-in-out infinite !important;
+    will-change: box-shadow, border-color;
+  }
+  .touch-none-select {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    touch-action: none !important;
+  }
+
+  .speech-bubble-text {
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
     white-space: pre-wrap !important;
@@ -107,6 +161,14 @@
  </style>
 </head>
 <body class="bg-neutral-950 text-neutral-100 min-h-screen flex flex-col selection:bg-amber-900">
+  <!-- 全域優雅非阻塞 Toast 提示系統 (不阻斷執行緒) -->
+  <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center space-y-2 pointer-events-none w-full max-w-sm px-4"></div>
+  <!-- 安全狀態機重置遮罩 -->
+  <div id="onlResettingStateOverlay" class="hidden fixed inset-0 bg-neutral-950/95 backdrop-blur-md z-[9998] flex flex-col items-center justify-center p-6 text-center space-y-3">
+    <div class="w-12 h-12 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mb-2"></div>
+    <div class="text-base font-black text-amber-400">對局正在安全重設中...</div>
+    <div class="text-xs text-neutral-400">狀態機正在安全過渡並清除舊遊戲歷程，保留席次與連線，請稍候</div>
+  </div>
 
  <!-- 頂部狀態列：局字改為古字，並移除頂部戰績榜按鈕 -->
  <header class="bg-neutral-900/90 backdrop-blur border-b border-neutral-800 px-4 py-3 sticky top-0 z-50 flex justify-between items-center shadow-md">
@@ -121,6 +183,10 @@
  </div>
  </div>
  <div class="flex items-center space-x-2">
+ <button id="btnTasteDrawerOpen" onclick="toggleTasteSettingsDrawer()" class="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold transition flex items-center space-x-1" title="介面美學與音響設定">
+ <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+ <span class="hidden sm:inline">雅韻設定</span>
+ </button>
  <button id="voiceBtn" onclick="toggleVoice()" class="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold transition">
  🔊 語音: 開
  </button>
@@ -295,8 +361,21 @@
  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-xl text-center space-y-4">
  <div class="text-xs text-neutral-400">系統已完成隨機角色分配，請查閱您的身分</div>
 
- <!-- 專屬防窺角色卡 (帶淡淡立繪浮水印) -->
- <div class="p-6 bg-neutral-950 border border-neutral-800 rounded-2xl relative overflow-hidden min-h-[200px] flex flex-col items-center justify-center shadow-inner">
+ <!-- 專屬防窺角色卡 (帶淡淡立繪浮水印 + 手機端長按2秒防窺解鎖) -->
+ <div class="p-6 bg-neutral-950 border border-neutral-800 rounded-2xl relative overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-inner">
+ <!-- 防窺長按2秒遮罩 (原生Touch Events + contextmenu攔截) -->
+ <div id="onlRolePrivacyCover" class="absolute inset-0 bg-neutral-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300 touch-none-select cursor-pointer select-none">
+   <div class="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mb-2.5 text-2xl relative">
+     <svg class="absolute inset-0 w-full h-full -rotate-90">
+       <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="3" fill="none" class="text-neutral-800" />
+       <circle id="onlTouchRevealCircle" cx="32" cy="32" r="28" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="text-amber-500 transition-all duration-75" />
+     </svg>
+     <span>🔒</span>
+   </div>
+   <div class="text-sm font-black text-amber-400 mb-1">防窺保護鎖定中</div>
+   <div class="text-xs text-neutral-400">請<span class="text-amber-300 font-bold">長按 2 秒</span>解鎖查閱身分</div>
+   <div id="onlTouchHoldProgressText" class="text-[11px] text-amber-400 font-mono mt-2 opacity-0">0%</div>
+ </div>
  <div id="onlRoleWatermarkBg" class="role-watermark-overlay" style="opacity: 0.22;"></div>
 
 <div class="relative z-10 space-y-1">
@@ -344,12 +423,34 @@
  <div id="onlActiveTurnPassOrderRow" class="flex items-center space-x-2 overflow-x-auto py-1 min-h-[38px]"></div>
  </div>
 
- <!-- A. 當前是我的回合：完整操作面板 (查驗a、能力b、指定下家c) -->
- <div id="onlActiveTurnControls" class="space-y-3">
+ <!-- A. 當前是我的回合：單螢幕無滾動緊湊分步導引儀表板 (Stepper Modal / Tab Panel) -->
+ <div id="onlActiveTurnControls" class="space-y-2.5">
  <!-- 藥不然與老朝奉同伴相認陣營提示 (比照小幫手，修改4) -->
- <div id="onlTurnCampInfoBanner" class="hidden p-3 bg-neutral-950 border border-rose-800/80 rounded-xl text-xs text-neutral-200 font-bold shadow-md"></div>
+ <div id="onlTurnCampInfoBanner" class="hidden p-2.5 bg-neutral-950 border border-rose-800/80 rounded-xl text-xs text-neutral-200 font-bold shadow-md"></div>
+ 
+ <!-- 單螢幕緊湊步驟指示條 (Stepper Tabs) -->
+ <div class="flex items-center justify-between border-b border-neutral-800 pb-2 text-xs select-none">
+   <div class="flex items-center space-x-1 sm:space-x-1.5">
+     <div id="turnStepperTabA" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-950/80 text-amber-300 border border-amber-600/60 transition">
+       <span class="w-3.5 h-3.5 rounded-full bg-amber-500 text-neutral-950 text-[9px] font-black inline-flex items-center justify-center">1</span>
+       <span>查驗獸首</span>
+     </div>
+     <span class="text-neutral-600 text-[10px]">➔</span>
+     <div id="turnStepperTabB" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-neutral-500 border border-neutral-800 transition">
+       <span class="w-3.5 h-3.5 rounded-full bg-neutral-800 text-neutral-400 text-[9px] font-black inline-flex items-center justify-center">2</span>
+       <span>專屬技能</span>
+     </div>
+     <span class="text-neutral-600 text-[10px]">➔</span>
+     <div id="turnStepperTabC" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-neutral-500 border border-neutral-800 transition">
+       <span class="w-3.5 h-3.5 rounded-full bg-neutral-800 text-neutral-400 text-[9px] font-black inline-flex items-center justify-center">3</span>
+       <span>指定傳遞</span>
+     </div>
+   </div>
+   <span id="onlTurnCountdownBadge" class="text-[11px] font-mono font-bold text-amber-400"></span>
+ </div>
+
  <!-- 流程 a: 選擇想查驗的獸首 -->
- <div id="onlStepA" class="space-y-2">
+ <div id="onlStepA" class="space-y-2 slide-in-view">
  <div class="flex justify-between items-center">
  <h3 class="text-sm font-bold text-amber-400 flex items-center">
  <span class="w-5 h-5 rounded-full bg-amber-500 text-neutral-950 font-bold inline-flex items-center justify-center text-[10px] mr-1.5">a</span>
@@ -1049,6 +1150,10 @@
  <span class="text-base">📊</span>
  <span>查看歷史戰績與勝率排行榜</span>
  </button>
+ <button type="button" onclick="document.getElementById('firebaseSecurityRulesModal').classList.remove('hidden')" class="w-full py-2 bg-neutral-950 hover:bg-neutral-900 text-neutral-500 hover:text-amber-400 text-[11px] rounded-lg border border-neutral-800/80 transition flex items-center justify-center space-x-1">
+ <span>🛡️</span>
+ <span>查看 Firebase 後端防作弊安全規則配置規範</span>
+ </button>
 
  <!-- 版本、免責文字與視覺風格微調 -->
  <div class="text-[11px] text-neutral-500 leading-relaxed pt-1 space-y-2">
@@ -1056,7 +1161,70 @@
  <div>該程式為粉絲製作的古董局中局桌遊助手程式，不代表官方立場</div>
 
 </div>
- </footer>
+   <!-- Firebase Security Rules 防作弊權限隔離彈窗 -->
+  <div id="firebaseSecurityRulesModal" class="hidden fixed inset-0 bg-neutral-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border border-neutral-700 rounded-2xl p-5 max-w-lg w-full shadow-2xl space-y-3 text-left">
+      <div class="flex justify-between items-center border-b border-neutral-800 pb-2">
+        <h3 class="text-sm font-black text-amber-400 flex items-center space-x-1.5">
+          <span>🛡️</span><span>Firebase Security Rules 防作弊配置規範</span>
+        </h3>
+        <button onclick="document.getElementById('firebaseSecurityRulesModal').classList.add('hidden')" class="text-neutral-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-neutral-300 leading-relaxed">
+        本配置確保客戶端只能讀取自身的私有角色資料（例如 <code>users/{myUid}</code> 或 <code>rooms/{id}/private/{uid}</code>）與全場公開的 <code>publicState</code> 節點，嚴防玩家透過 F12 監聽封包竊取隱藏身分。
+      </p>
+      <div class="relative">
+        <pre class="bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-[10px] font-mono text-neutral-300 overflow-x-auto max-h-60"><code>// === Cloud Firestore Security Rules (firestore.rules) ===
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 公開房間節點：供全體玩家監聽大廳座位、票數與發言
+    match /GudongOnlineGame/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null || request.resource.data.keys().hasAll(['status']);
+      
+      // 角色隔離私有子集合：僅本人 UID 具備讀取權限 (嚴防 F12 窺探)
+      match /privateRoles/{userId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // 個人私有資料節點
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+// === Realtime Database Rules (database.rules.json) ===
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        "publicState": { ".read": true, ".write": "auth != null" },
+        "private": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}</code></pre>
+        <button type="button" onclick="copySecurityRulesCode()" class="absolute top-2 right-2 px-2 py-1 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-bold text-[10px] rounded shadow">複製規則</button>
+      </div>
+      <button onclick="document.getElementById('firebaseSecurityRulesModal').classList.add('hidden')" class="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-xl transition">關閉</button>
+    </div>
+  </div>
+</footer>
 
  <!-- ================= 戰績與勝率排行榜彈窗 (含3大分頁) ================= -->
  <div id="modalStats" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
@@ -1478,6 +1646,766 @@ function checkWatermarkUploadedState() {
     /* ============================================================
    線上版四位數房間與分頁隔離管理系統
 ============================================================ */
+    /* =========================================================================
+ * 4 大維度核心引擎 (Firebase Backend, Sync & Presence, Mobile UX, Audio/Anim)
+ * ========================================================================= */
+
+  // --- 1. 全域優雅非阻塞 Toast 提示系統 (不阻斷執行緒) ---
+  function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    const bg = type === 'error' ? 'bg-rose-950/95 border-rose-600 text-rose-200' :
+               type === 'warning' ? 'bg-amber-950/95 border-amber-500 text-amber-200' :
+               type === 'success' ? 'bg-emerald-950/95 border-emerald-500 text-emerald-200' :
+               'bg-neutral-900/95 border-neutral-700 text-neutral-200';
+    toast.className = `${bg} border px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 flex items-center space-x-2 select-none`;
+    const icon = type === 'error' ? '⚠️' : type === 'warning' ? '⚡' : type === 'success' ? '✓' : 'ℹ️';
+    toast.innerHTML = `<span class="text-sm">${icon}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+      toast.classList.remove('translate-y-2', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+    });
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('-translate-y-2', 'opacity-0');
+      setTimeout(() => toast.remove(), 350);
+    }, duration);
+  }
+  window.showToast = showToast;
+
+  function copySecurityRulesCode() {
+    const code = `// === Cloud Firestore Security Rules (firestore.rules) ===
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /GudongOnlineGame/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null || request.resource.data.keys().hasAll(['status']);
+      match /privateRoles/{userId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+// === Realtime Database Rules (database.rules.json) ===
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        "publicState": { ".read": true, ".write": "auth != null" },
+        "private": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(() => {
+        showToast('✓ 安全規則範例已複製至剪貼簿！', 'success');
+      }).catch(() => {
+        showToast('複製失敗，請手動複製。', 'warning');
+      });
+    }
+  }
+  window.copySecurityRulesCode = copySecurityRulesCode;
+
+  // --- 2. 全域防連點 (Loading Lock & Spinner) ---
+  async function withLoadingLock(btn, asyncCallback) {
+    if (!btn || btn.disabled || btn.dataset.loading === 'true') return;
+    btn.disabled = true;
+    btn.dataset.loading = 'true';
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `<span class="inline-flex items-center justify-center space-x-2"><svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>處理中...</span></span>`;
+    try {
+      return await asyncCallback();
+    } catch (err) {
+      showToast(err.message || '操作失敗，請稍候重試', 'error');
+      throw err;
+    } finally {
+      btn.dataset.loading = 'false';
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+  window.withLoadingLock = withLoadingLock;
+
+  // --- 3. 時間同步 (Server Time Offset) & 絕對毫秒計時 ---
+  let clientServerOffset = 0;
+  function getServerNow() {
+    return Date.now() + clientServerOffset;
+  }
+  window.getServerNow = getServerNow;
+
+  // --- 4. 防休眠 (Web Wake Lock API) & 邊緣手勢/返回防跳出攔截 ---
+  let _screenWakeLock = null;
+  async function requestScreenWakeLock() {
+    try {
+      if ('wakeLock' in navigator && !_screenWakeLock) {
+        _screenWakeLock = await navigator.wakeLock.request('screen');
+        _screenWakeLock.addEventListener('release', () => {
+          _screenWakeLock = null;
+        });
+        console.log('💡 螢幕常亮 (Wake Lock) 已啟動');
+      }
+    } catch (e) {
+      console.warn('Wake Lock 請求失敗或瀏覽器受限:', e);
+    }
+  }
+  window.requestScreenWakeLock = requestScreenWakeLock;
+
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && (currentAppMode === 'online' || currentAppMode === 'local')) {
+      await requestScreenWakeLock();
+    }
+  });
+
+  function initNavigationInterception() {
+    try {
+      history.pushState({ page: 'gudong_boardgame' }, '', location.href);
+    } catch(e) {}
+
+    window.addEventListener('popstate', (e) => {
+      if (currentAppMode === 'online' || (currentAppMode === 'local' && G.step !== 'setup')) {
+        history.pushState({ page: 'gudong_boardgame' }, '', location.href);
+        showToast('⚠️ 對局正在進行中，請由頁面內部按鍵退出，避免誤觸邊緣手勢中斷！', 'warning', 3500);
+      }
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (currentAppMode === 'online' || (currentAppMode === 'local' && G.step !== 'setup')) {
+        e.preventDefault();
+        e.returnValue = '遊戲仍在進行中，確定要離開嗎？';
+        return e.returnValue;
+      }
+    });
+  }
+  window.initNavigationInterception = initNavigationInterception;
+
+  // --- 5. AudioContext 權限全域解鎖 (突破手機瀏覽器 Autoplay 限制) ---
+  let _globalAudioUnlocked = false;
+  function unlockGlobalAudio() {
+    if (_globalAudioUnlocked) return;
+    _globalAudioUnlocked = true;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        if (!window._sharedAudioCtx) {
+          window._sharedAudioCtx = new AudioCtx();
+        }
+        if (window._sharedAudioCtx.state === 'suspended') {
+          window._sharedAudioCtx.resume();
+        }
+        const buffer = window._sharedAudioCtx.createBuffer(1, 1, 22050);
+        const source = window._sharedAudioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(window._sharedAudioCtx.destination);
+        source.start(0);
+      }
+    } catch(e) {}
+
+    try {
+      if (window.speechSynthesis) {
+        const silentUtter = new SpeechSynthesisUtterance(' ');
+        silentUtter.volume = 0;
+        window.speechSynthesis.speak(silentUtter);
+      }
+    } catch(e) {}
+
+    try {
+      const audios = document.querySelectorAll('audio');
+      audios.forEach(a => {
+        a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+      });
+    } catch(e) {}
+    console.log('🔊 全域音訊與語音播報已突破 Autoplay 限制成功解鎖！');
+  }
+  window.unlockGlobalAudio = unlockGlobalAudio;
+
+  // 綁定首次手勢點擊自動解鎖音訊與喚醒螢幕常亮
+  window.addEventListener('pointerdown', () => {
+    unlockGlobalAudio();
+    requestScreenWakeLock();
+  }, { once: true });
+
+  // --- 6. 觸控防窺：長按 2 秒解鎖元件 (Native Touch Events + contextmenu 攔截) ---
+  function initTouchRevealCard() {
+    const cover = document.getElementById('onlRolePrivacyCover');
+    const circle = document.getElementById('onlTouchRevealCircle');
+    const progText = document.getElementById('onlTouchHoldProgressText');
+    if (!cover || !circle) return;
+
+    // 嚴格攔截原生長按選單與文字反白
+    cover.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    let touchStartTime = 0;
+    let touchHoldTimer = null;
+    const HOLD_DURATION = 2000; // 2 秒
+
+    function startHold(e) {
+      if (e.cancelable) e.preventDefault();
+      unlockGlobalAudio();
+      touchStartTime = Date.now();
+      if (progText) progText.classList.remove('opacity-0');
+
+      if (touchHoldTimer) clearInterval(touchHoldTimer);
+      touchHoldTimer = setInterval(() => {
+        const elapsed = Date.now() - touchStartTime;
+        const pct = Math.min(100, Math.floor((elapsed / HOLD_DURATION) * 100));
+        const offset = 175.9 - (175.9 * pct / 100);
+        circle.style.strokeDashoffset = offset;
+        if (progText) progText.innerText = `${pct}%`;
+
+        if (elapsed >= HOLD_DURATION) {
+          clearInterval(touchHoldTimer);
+          touchHoldTimer = null;
+          try { if (navigator.vibrate) navigator.vibrate(50); } catch(err) {}
+          cover.classList.add('opacity-0', 'pointer-events-none');
+          setTimeout(() => cover.classList.add('hidden'), 320);
+          showToast('🔓 角色身分已成功解鎖！', 'success');
+        }
+      }, 40);
+    }
+
+    function cancelHold() {
+      if (touchHoldTimer) {
+        clearInterval(touchHoldTimer);
+        touchHoldTimer = null;
+      }
+      circle.style.strokeDashoffset = '175.9';
+      if (progText) {
+        progText.innerText = '0%';
+        progText.classList.add('opacity-0');
+      }
+    }
+
+    cover.addEventListener('touchstart', startHold, { passive: false });
+    cover.addEventListener('touchend', cancelHold);
+    cover.addEventListener('touchcancel', cancelHold);
+    cover.addEventListener('mousedown', startHold);
+    cover.addEventListener('mouseup', cancelHold);
+    cover.addEventListener('mouseleave', cancelHold);
+  }
+  window.initTouchRevealCard = initTouchRevealCard;
+
+  // --- 7. 斷線接管與死鎖防護 (Deadlock Prevention & Auto-Takeover) ---
+  let _isExecutingAutoTakeover = false;
+  async function executeAutoTakeoverForCurrentTurn(room) {
+    if (!room || !isFirebaseReady || !db) return;
+    const curRoundIdx = room.currentRoundIdx || 0;
+    const curRound = room.rounds && room.rounds[curRoundIdx];
+    const turnPlayerId = room.currentTurnPlayerId;
+    const turnPlayer = (room.players || []).find(p => p.id === turnPlayerId);
+    if (!turnPlayer || !curRound) return;
+
+    console.warn(`[死鎖防護] 玩家【${turnPlayer.name}】回合逾時未回應，啟動房主自動代管推進！`);
+    showToast(`⏱️ 玩家【${turnPlayer.name}】逾時未動作，系統已自動代管推進！`, 'warning', 3000);
+
+    const passOrder = curRound.passOrder || [];
+    const remainingPlayers = (room.players || []).filter(p => !passOrder.includes(p.id));
+
+    if (remainingPlayers.length > 0) {
+      const nextP = remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)];
+      passOrder.push(nextP.id);
+      await db.doc(ONLINE_ROOM_DOC).update({
+        'rounds': room.rounds,
+        'currentTurnPlayerId': nextP.id,
+        'currentTurnDeadline': getServerNow() + 30000,
+        'lastActivityTime': Date.now()
+      });
+    } else {
+      if (typeof executeOnlineAdvanceToDiscussion === 'function') {
+        await executeOnlineAdvanceToDiscussion(room);
+      }
+    }
+  }
+  window.executeAutoTakeoverForCurrentTurn = executeAutoTakeoverForCurrentTurn;
+
+
+  // =========================================================================
+  // 新中式古典輕量音響合成器 (Web Audio API Procedural Synthesizer)
+  // =========================================================================
+  class AncientSoundController {
+    constructor() {
+      this.ctx = null;
+      this.bgmGain = null;
+      this.sfxGain = null;
+      this.isBgmPlaying = false;
+      this.bgmOscs = null;
+      this.bgmVolume = parseFloat(localStorage.getItem('gudong_bgm_vol') || '0.25');
+      this.sfxVolume = parseFloat(localStorage.getItem('gudong_sfx_vol') || '0.65');
+      this.isMuted = localStorage.getItem('gudong_sound_muted') === 'true';
+    }
+
+    init() {
+      if (this.ctx) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+        this.bgmGain = this.ctx.createGain();
+        this.sfxGain = this.ctx.createGain();
+
+        this.bgmGain.gain.value = this.isMuted ? 0 : this.bgmVolume;
+        this.sfxGain.gain.value = this.isMuted ? 0 : this.sfxVolume;
+
+        this.bgmGain.connect(this.ctx.destination);
+        this.sfxGain.connect(this.ctx.destination);
+      } catch(e) {
+        console.warn('AudioContext init error', e);
+      }
+    }
+
+    ensureContext() {
+      this.init();
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+
+    // 1. 點擊反饋：輕脆木質印章落款音效 (Seal Stamp / Wood Tap)
+    playClick() {
+      if (this.isMuted || this.sfxVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(280, t);
+      osc.frequency.exponentialRampToValueAtTime(70, t + 0.055);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(900, t);
+
+      gain.gain.setValueAtTime(0.45 * this.sfxVolume, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start(t);
+      osc.stop(t + 0.07);
+    }
+
+    // 2. 輪到自己：清脆典雅的編鐘/短銅鑼提神音效 (Turn Chime / Bianzhong)
+    playTurnChime() {
+      if (this.isMuted || this.sfxVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      const t = this.ctx.currentTime;
+      // 和弦模擬青銅編鐘微音 (C5, G5, C6)
+      const freqs = [523.25, 783.99, 1046.5];
+      freqs.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(f, t);
+
+        const decay = 1.1 + idx * 0.25;
+        gain.gain.setValueAtTime((0.35 / (idx + 1)) * this.sfxVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(t);
+        osc.stop(t + decay + 0.05);
+      });
+    }
+
+    // 3. 鑒寶真品：清脆古箏泛音 (Guzheng Pentatonic Harmonic)
+    playGuzhengReal() {
+      if (this.isMuted || this.sfxVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      const t = this.ctx.currentTime;
+      const notes = [587.33, 739.99, 880.0, 1174.66]; // D5 -> F#5 -> A5 -> D6
+      notes.forEach((freq, idx) => {
+        const startTime = t + idx * 0.065;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.992, startTime + 0.75);
+
+        gain.gain.setValueAtTime(0.32 * this.sfxVolume, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.8);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.85);
+      });
+    }
+
+    // 3. 鑒寶贗品：低沉懸疑木魚音 (Deep Suspenseful Muyu)
+    playMuyuFake() {
+      if (this.isMuted || this.sfxVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      const t = this.ctx.currentTime;
+      [0, 0.12].forEach((delay) => {
+        const startTime = t + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, startTime);
+        osc.frequency.exponentialRampToValueAtTime(75, startTime + 0.11);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(120, startTime);
+        filter.Q.setValueAtTime(4.0, startTime);
+
+        gain.gain.setValueAtTime(0.42 * this.sfxVolume, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.16);
+      });
+    }
+
+    // 4. 階段切換：捲軸展開微音效 (Scroll unroll shimmer)
+    playScrollTransition() {
+      if (this.isMuted || this.sfxVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, t);
+      osc.frequency.exponentialRampToValueAtTime(640, t + 0.16);
+
+      gain.gain.setValueAtTime(0.18 * this.sfxVolume, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start(t);
+      osc.stop(t + 0.22);
+    }
+
+    // 5. 懸疑氛圍環境配樂 (Ambient Suspense BGM) - 低分貝無縫循環
+    startBgm() {
+      if (this.isBgmPlaying || this.isMuted || this.bgmVolume <= 0) return;
+      this.ensureContext();
+      if (!this.ctx) return;
+
+      try {
+        this.isBgmPlaying = true;
+        const t = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const droneGain = this.ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(73.42, t); // D2
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(110.0, t); // A2
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(220, t);
+
+        droneGain.gain.setValueAtTime(0.09 * this.bgmVolume, t);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(droneGain);
+        droneGain.connect(this.bgmGain);
+
+        osc1.start();
+        osc2.start();
+        this.bgmOscs = [osc1, osc2];
+      } catch(e) {
+        console.warn('BGM start error', e);
+      }
+    }
+
+    stopBgm() {
+      this.isBgmPlaying = false;
+      if (this.bgmOscs) {
+        try {
+          this.bgmOscs.forEach(osc => osc.stop());
+        } catch(e) {}
+        this.bgmOscs = null;
+      }
+    }
+
+    setBgmVolume(val) {
+      this.bgmVolume = Math.max(0, Math.min(1, val));
+      localStorage.setItem('gudong_bgm_vol', String(this.bgmVolume));
+      if (this.bgmGain && this.ctx) {
+        this.bgmGain.gain.setValueAtTime(this.isMuted ? 0 : this.bgmVolume, this.ctx.currentTime);
+      }
+      if (this.bgmVolume > 0 && !this.isBgmPlaying && !this.isMuted) {
+        this.startBgm();
+      } else if (this.bgmVolume <= 0) {
+        this.stopBgm();
+      }
+    }
+
+    setSfxVolume(val) {
+      this.sfxVolume = Math.max(0, Math.min(1, val));
+      localStorage.setItem('gudong_sfx_vol', String(this.sfxVolume));
+      if (this.sfxGain && this.ctx) {
+        this.sfxGain.gain.setValueAtTime(this.isMuted ? 0 : this.sfxVolume, this.ctx.currentTime);
+      }
+    }
+
+    toggleMute() {
+      this.isMuted = !this.isMuted;
+      localStorage.setItem('gudong_sound_muted', String(this.isMuted));
+      if (this.bgmGain && this.ctx) {
+        this.bgmGain.gain.setValueAtTime(this.isMuted ? 0 : this.bgmVolume, this.ctx.currentTime);
+      }
+      if (this.sfxGain && this.ctx) {
+        this.sfxGain.gain.setValueAtTime(this.isMuted ? 0 : this.sfxVolume, this.ctx.currentTime);
+      }
+      if (this.isMuted) {
+        this.stopBgm();
+      } else if (this.bgmVolume > 0) {
+        this.startBgm();
+      }
+      return this.isMuted;
+    }
+  }
+  window.soundCtrl = new AncientSoundController();
+
+  // 全域綁定按鈕點擊木質落款反饋音效
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button, .cursor-pointer')) {
+      if (window.soundCtrl) window.soundCtrl.playClick();
+    }
+  }, { passive: true });
+
+  // =========================================================================
+  // 視覺抽屜控制器 (Taste Settings Engine)
+  // =========================================================================
+  let _isTasteDrawerOpen = false;
+  function toggleTasteSettingsDrawer() {
+    _isTasteDrawerOpen = !_isTasteDrawerOpen;
+    const drawer = document.getElementById('tasteSettingsDrawer');
+    const backdrop = document.getElementById('tasteSettingsDrawerBackdrop');
+    if (!drawer || !backdrop) return;
+
+    if (_isTasteDrawerOpen) {
+      backdrop.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        drawer.classList.remove('translate-x-full');
+      });
+      syncTasteUIControls();
+    } else {
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0');
+      drawer.classList.add('translate-x-full');
+      setTimeout(() => backdrop.classList.add('hidden'), 300);
+    }
+  }
+  window.toggleTasteSettingsDrawer = toggleTasteSettingsDrawer;
+
+  function syncTasteUIControls() {
+    const s = getSavedTasteSettings();
+    const lblWm = document.getElementById('labelWmOpacity');
+    const sldWm = document.getElementById('sliderWmOpacity');
+    if (lblWm && sldWm) {
+      lblWm.innerText = `${Math.round(s.wmOpacity * 100)}%`;
+      sldWm.value = Math.round(s.wmOpacity * 100);
+    }
+    const lblBgm = document.getElementById('labelBgmVol');
+    const sldBgm = document.getElementById('sliderBgmVol');
+    if (lblBgm && sldBgm && window.soundCtrl) {
+      lblBgm.innerText = `${Math.round(window.soundCtrl.bgmVolume * 100)}%`;
+      sldBgm.value = Math.round(window.soundCtrl.bgmVolume * 100);
+    }
+    const lblSfx = document.getElementById('labelSfxVol');
+    const sldSfx = document.getElementById('sliderSfxVol');
+    if (lblSfx && sldSfx && window.soundCtrl) {
+      lblSfx.innerText = `${Math.round(window.soundCtrl.sfxVolume * 100)}%`;
+      sldSfx.value = Math.round(window.soundCtrl.sfxVolume * 100);
+    }
+    const btnMute = document.getElementById('btnMuteToggle');
+    if (btnMute && window.soundCtrl) {
+      btnMute.innerText = window.soundCtrl.isMuted ? '🔇 靜音: 開' : '🔊 靜音: 關';
+    }
+  }
+
+  function getSavedTasteSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('gudong_taste_settings') || '{}');
+      return {
+        ornament: saved.ornament !== undefined ? saved.ornament : 1,
+        wmOpacity: saved.wmOpacity !== undefined ? saved.wmOpacity : 0.18,
+        goldAccent: saved.goldAccent || 'amber',
+        bgDepth: saved.bgDepth || 'deep'
+      };
+    } catch(e) {
+      return { ornament: 1, wmOpacity: 0.18, goldAccent: 'amber', bgDepth: 'deep' };
+    }
+  }
+
+  function applyTasteSettings(settings) {
+    const root = document.documentElement;
+    if (settings.bgDepth === 'charcoal') {
+      root.style.setProperty('--taste-bg', '#121212');
+    } else {
+      root.style.setProperty('--taste-bg', '#0a0a0a');
+    }
+
+    if (settings.goldAccent === 'bronze') {
+      root.style.setProperty('--taste-gold', '#d97706');
+      root.style.setProperty('--taste-gold-border', 'rgba(217, 119, 6, 0.4)');
+    } else {
+      root.style.setProperty('--taste-gold', '#f59e0b');
+      root.style.setProperty('--taste-gold-border', 'rgba(245, 158, 11, 0.4)');
+    }
+
+    const wmOpacity = (settings.wmOpacity !== undefined) ? settings.wmOpacity : 0.18;
+    root.style.setProperty('--taste-wm-opacity', String(wmOpacity));
+
+    const wms = document.querySelectorAll('.role-watermark-overlay');
+    wms.forEach(el => el.style.opacity = String(wmOpacity));
+
+    localStorage.setItem('gudong_taste_settings', JSON.stringify(settings));
+  }
+
+  function setOrnamentLevel(lvl) {
+    const s = getSavedTasteSettings();
+    s.ornament = lvl;
+    const lbl = document.getElementById('labelOrnamentLevel');
+    if (lbl) {
+      lbl.innerText = lvl === 0 ? '0 - 極簡現代' : (lvl === 1 ? '1 - 雅致古風' : '2 - 雙線暗金');
+    }
+    applyTasteSettings(s);
+    showToast('古典裝飾程度已更新', 'info', 1500);
+  }
+  window.setOrnamentLevel = setOrnamentLevel;
+
+  function setWmOpacity(val) {
+    const s = getSavedTasteSettings();
+    s.wmOpacity = parseFloat(val) / 100;
+    const lbl = document.getElementById('labelWmOpacity');
+    if (lbl) lbl.innerText = `${val}%`;
+    applyTasteSettings(s);
+  }
+  window.setWmOpacity = setWmOpacity;
+
+  function setGoldAccent(accent) {
+    const s = getSavedTasteSettings();
+    s.goldAccent = accent;
+    applyTasteSettings(s);
+    showToast(accent === 'bronze' ? '已切換為啞光古銅金' : '已切換為溫潤琥珀金', 'info', 1500);
+  }
+  window.setGoldAccent = setGoldAccent;
+
+  function setBgDepth(depth) {
+    const s = getSavedTasteSettings();
+    s.bgDepth = depth;
+    applyTasteSettings(s);
+    showToast(depth === 'charcoal' ? '已套用石墨深灰底色' : '已套用深邃純黑底色', 'info', 1500);
+  }
+  window.setBgDepth = setBgDepth;
+
+  function setBgmVol(val) {
+    const v = parseFloat(val) / 100;
+    if (window.soundCtrl) window.soundCtrl.setBgmVolume(v);
+    const lbl = document.getElementById('labelBgmVol');
+    if (lbl) lbl.innerText = `${val}%`;
+  }
+  window.setBgmVol = setBgmVol;
+
+  function setSfxVol(val) {
+    const v = parseFloat(val) / 100;
+    if (window.soundCtrl) window.soundCtrl.setSfxVolume(v);
+    const lbl = document.getElementById('labelSfxVol');
+    if (lbl) lbl.innerText = `${val}%`;
+  }
+  window.setSfxVol = setSfxVol;
+
+  function toggleSoundMuteAll() {
+    if (!window.soundCtrl) return;
+    const muted = window.soundCtrl.toggleMute();
+    const btnMute = document.getElementById('btnMuteToggle');
+    if (btnMute) {
+      btnMute.innerText = muted ? '🔇 靜音: 開' : '🔊 靜音: 關';
+    }
+    showToast(muted ? '已開啟全場靜音' : '已解除靜音', 'info', 1500);
+  }
+  window.toggleSoundMuteAll = toggleSoundMuteAll;
+
+  // 頁面載入時套用已保存的 Taste 設定
+  setTimeout(() => {
+    applyTasteSettings(getSavedTasteSettings());
+  }, 50);
+
+  // =========================================================================
+  // 單螢幕分步導引切換邏輯 (Stepper Tabs Controller)
+  // =========================================================================
+  function updateTurnStepperUI(step) {
+    const tabA = document.getElementById('turnStepperTabA');
+    const tabB = document.getElementById('turnStepperTabB');
+    const tabC = document.getElementById('turnStepperTabC');
+    if (!tabA || !tabB || !tabC) return;
+
+    [tabA, tabB, tabC].forEach(tab => {
+      tab.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-neutral-500 border border-neutral-800 transition";
+    });
+
+    if (step === 'a') {
+      tabA.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-950/80 text-amber-300 border border-amber-600/60 transition";
+    } else if (step === 'b') {
+      tabA.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-emerald-400 border border-emerald-800/60 transition";
+      tabB.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-950/80 text-amber-300 border border-amber-600/60 transition";
+    } else if (step === 'c') {
+      tabA.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-emerald-400 border border-emerald-800/60 transition";
+      tabB.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-emerald-400 border border-emerald-800/60 transition";
+      tabC.className = "flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-950/80 text-amber-300 border border-amber-600/60 transition";
+    }
+  }
+  window.updateTurnStepperUI = updateTurnStepperUI;
+
     let currentOnlineRoomCode = "8888";
 
     function getOnlineRoomDoc(code) {
@@ -1648,81 +2576,186 @@ function checkWatermarkUploadedState() {
       selectAppMode('mode_picker');
     }
 
-        function resetLocalGameToLobby() {
-      clearAllCookies();
-      localStorage.removeItem(STORAGE_KEY);
-      const banner = document.getElementById('restoreBanner');
-      if (banner) banner.classList.add('hidden');
-      G.step = 'setup';
-      G.rounds = [];
-      G.currentRoundIdx = 0;
-      G.starterPlayerId = null;
-      G.forcedStarterPlayerId = null;
-      G.lastPlayerIdOfRound = null;
-      G.activePlayerId = null;
-      G.inspectedPlayerIds = [];
-      G.blockedBeastThisRound = null;
-      G.blockedBeastPositionThisRound = null;
-      G.laoChaoFengActiveThisRound = false;
-      G.inspectedBeastsInTurn = [];
-      G.turnSubStep = 'a';
-      G.pendingNextPlayerId = null;
-      G.abilityLockedInCurrentTurn = false;
-      G.yaoSelectedTargetId = null;
-      G.fangZhenSelectedTargetId = null;
-      G.fangZhenRevealedCamp = null;
-      G.roleRevealIdx = 0;
-      G.actionLogs = {};
-      G.personVotes = {};
-      G.gameOverData = null;
-      G.playerCount = 8;
-      syncPlayersFromMaster();
-      renderAll();
-      // 依要求3：古董局中局小幫手模式在按下重新開局，確認後即會刪除當局數據資料，並回到選擇模式的畫面
-      selectAppMode('mode_picker');
+    // =========================================================================
+    // 1. 純淨重置函式 (Pure Reset State Engine) - 徹底解決重新開局失敗與狀態鎖死
+    // =========================================================================
+    async function resetGameSession({ preserveRoom = false, preservePlayers = true } = {}) {
+      console.log(`[Pure Reset] 啟動純淨重置: preserveRoom=${preserveRoom}, preservePlayers=${preservePlayers}`);
+      try {
+        // 1.1 清理本地與 Session 持久化儲存 (Storage Purge)
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          sessionStorage.removeItem('gudong_current_game_state');
+          sessionStorage.removeItem('gudong_online_gameover_seen');
+          clearAllCookies();
+        } catch(err) {
+          console.warn('Storage purge warning:', err);
+        }
+
+        // 1.2 重置單機模式所有遊戲狀態為初始預設值
+        G.step = 'setup';
+        G.rounds = [];
+        G.currentRoundIdx = 0;
+        G.starterPlayerId = null;
+        G.forcedStarterPlayerId = null;
+        G.lastPlayerIdOfRound = null;
+        G.activePlayerId = null;
+        G.inspectedPlayerIds = [];
+        G.blockedBeastThisRound = null;
+        G.blockedBeastPositionThisRound = null;
+        G.laoChaoFengActiveThisRound = false;
+        G.inspectedBeastsInTurn = [];
+        G.turnSubStep = 'a';
+        G.pendingNextPlayerId = null;
+        G.abilityLockedInCurrentTurn = false;
+        G.yaoSelectedTargetId = null;
+        G.fangZhenSelectedTargetId = null;
+        G.fangZhenRevealedCamp = null;
+        G.roleRevealIdx = 0;
+        G.actionLogs = {};
+        G.personVotes = {};
+        G.gameOverData = null;
+        G.playerCount = 8;
+
+        if (preservePlayers) {
+          syncPlayersFromMaster();
+        } else {
+          G.players = [];
+        }
+
+        const banner = document.getElementById('restoreBanner');
+        if (banner) banner.classList.add('hidden');
+
+        // 1.3 線上多人模式原子重置 (Atomic Reset)
+        if (currentAppMode === 'online' && isFirebaseReady && db) {
+          const docRef = db.doc(ONLINE_ROOM_DOC);
+          const snap = await docRef.get();
+          if (snap.exists) {
+            const data = snap.data();
+            let players = data.players || [];
+            if (preservePlayers) {
+              players = players.map(p => ({
+                ...p,
+                readyToStart: false,
+                role: '',
+                roleConfirmed: false,
+                isAmbushed: false,
+                isPermanentlyAmbushed: false,
+                inspectHistory: [],
+                abilityHistory: [],
+                confusedRound: null
+              }));
+            } else {
+              players = [];
+            }
+
+            // 狀態過渡：先將 status 設為 resetting，鎖定前端防止 Null 錯誤
+            await docRef.update({
+              status: 'resetting',
+              gameState: 'resetting',
+              lastActivityTime: Date.now()
+            });
+
+            // 安全清除遊戲歷程，重置為初始等待大廳
+            await docRef.set({
+              roomId: currentOnlineRoomCode || '8888',
+              status: 'waiting',
+              gameState: 'ready',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastActivityTime: Date.now(),
+              startTimestamp: null,
+              players: players,
+              rounds: [],
+              currentRoundIdx: 0,
+              currentTurnPlayerId: null,
+              currentSpeakerId: null,
+              lastCalculatedResult: null,
+              gameOverData: null,
+              gameOverRestartVotes: {},
+              restartVoteData: null,
+              closeVoteData: null
+            });
+          }
+        }
+
+        // 1.4 客戶端狀態全面復原
+        resetAllOnlineClientState();
+        window._isDealingRoles = false;
+        window._currentGameOverRenderedId = null;
+        window._isViewingGameOver = false;
+        window._hasEverJoinedLobby = preservePlayers;
+
+        // 1.5 觸發畫面重新渲染與路由跳轉
+        if (currentAppMode === 'local') {
+          renderAll();
+          selectAppMode('mode_picker');
+        } else if (currentAppMode === 'online') {
+          if (preserveRoom) {
+            showOnlineSubView('onlSecLobby');
+            if (onlineRoomData) {
+              renderOnlineLobby(onlineRoomData, onlineRoomData.players.find(p => p.id === myOnlinePlayerId));
+            }
+          } else {
+            selectAppMode('mode_picker');
+          }
+        } else {
+          selectAppMode('mode_picker');
+        }
+
+        showToast('✓ 遊戲對局狀態已純淨重置！', 'success', 2000);
+      } catch(e) {
+        console.error('resetGameSession 發生異常:', e);
+        showToast('重置失敗，請確認網路連線', 'error');
+      }
     }
-    window.resetLocalGameToLobby = resetLocalGameToLobby;
+    window.resetGameSession = resetGameSession;
+    window.resetLocalGameToLobby = () => resetGameSession({ preserveRoom: false, preservePlayers: true });
 
     async function handleHeaderResetClick() {
-      if (currentAppMode === 'local') {
-        if (confirm('確定要結束當前對局並重新開局嗎？將立即刪除當局數據資料，並回到選擇模式的畫面。')) {
-          resetLocalGameToLobby();
-        }
-        return;
-      } else if (currentAppMode === 'online') {
-        if (onlineRoomData && onlineRoomData.status === 'gameover') {
-          onlClickGameOverRestartReady();
-          return;
-        }
-        const room = onlineRoomData;
-        const otherPlayers = (room && room.players) ? room.players.filter(p => p.id !== myOnlinePlayerId) : [];
-        const remainingHumans = otherPlayers.filter(p => p.id && !p.id.startsWith('mock_p_'));
-
-        // 依要求：若房內無其他真人玩家，按下重新開局或離開時直接關閉房間並刪除清空資料！
-        if (remainingHumans.length === 0) {
-          try {
-            if (isFirebaseReady && db) {
-              await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
-            }
-          } catch(e) {
-            console.error('關閉並刪除房間資料失敗:', e);
+      try {
+        if (currentAppMode === 'local') {
+          if (confirm('確定要結束當前對局並重新開局嗎？將立即刪除當局數據資料，並回到選擇模式的畫面。')) {
+            await resetGameSession({ preserveRoom: false, preservePlayers: true });
           }
-          clearAllCookies();
-          resetAllOnlineClientState();
-          selectAppMode('mode_picker');
           return;
-        }
+        } else if (currentAppMode === 'online') {
+          if (onlineRoomData && onlineRoomData.status === 'gameover') {
+            await onlClickGameOverRestartReady();
+            return;
+          }
+          const room = onlineRoomData;
+          const otherPlayers = (room && room.players) ? room.players.filter(p => p.id !== myOnlinePlayerId) : [];
+          const remainingHumans = otherPlayers.filter(p => p.id && !p.id.startsWith('mock_p_'));
 
-        // 若有其他真實玩家，發起全場投票表決（虛擬角色強制按同意）
-        onlInitiateRestartVote();
-      } else {
-        selectAppMode('mode_picker');
+          if (remainingHumans.length === 0) {
+            if (confirm('房間內已無其他真人玩家，確定要重置並關閉房間嗎？')) {
+              try {
+                if (isFirebaseReady && db) {
+                  await initEmptyRoomDoc(db.doc(ONLINE_ROOM_DOC));
+                }
+              } catch(e) {}
+              await resetGameSession({ preserveRoom: false, preservePlayers: false });
+            }
+            return;
+          }
+
+          onlInitiateRestartVote();
+        } else {
+          selectAppMode('mode_picker');
+        }
+      } catch(err) {
+        console.error('handleHeaderResetClick 異常:', err);
+        showToast('重新開局操作異常，已嘗試自動恢復', 'error');
       }
     }
     window.handleHeaderResetClick = handleHeaderResetClick;
 
     function confirmResetGame() {
-      handleHeaderResetClick();
+      try {
+        handleHeaderResetClick();
+      } catch(err) {
+        console.error('confirmResetGame 異常:', err);
+      }
     }
     window.confirmResetGame = confirmResetGame;
 
@@ -1744,6 +2777,8 @@ function checkWatermarkUploadedState() {
         }
       }
 
+      initNavigationInterception();
+      requestScreenWakeLock();
       showOnlineSubView('onlSecNickname');
       const input = document.getElementById('onlInputNickname');
       if (input) {
@@ -2137,35 +3172,51 @@ function checkWatermarkUploadedState() {
         const totalCount = players.length;
         const readyCount = players.filter(p => votes[p.id] === true).length;
 
-        // 當所有人均按下按鈕後，立即重製房間（號碼一樣，不另外跳出視窗）
+        // 當所有人均按下按鈕後，實作安全狀態機 (State Machine) 重置過渡邏輯：
+        // 階段 1：先將 status/gameState 設為 'resetting'，鎖定 UI 並暫停舊資料處理，防範 Null 錯誤
         if (readyCount >= totalCount && totalCount > 0) {
-          const updatedPlayers = players.map(p => ({
-            ...p,
-            readyToStart: false,
-            role: '',
-            roleConfirmed: false,
-            isAmbushed: false,
-            isPermanentlyAmbushed: false,
-            inspectHistory: [],
-            abilityHistory: [],
-            confusedRound: null
-          }));
-
           transaction.update(docRef, {
-            status: 'waiting',
-            players: updatedPlayers,
-            rounds: [],
-            currentRoundIdx: 0,
-            currentTurnPlayerId: null,
-            currentSpeakerId: null,
-            lastCalculatedResult: null,
-            gameOverData: null,
-            gameOverRestartVotes: {},
-            restartVoteData: null,
-            closeVoteData: null,
-            waitingSince: Date.now(),
+            status: 'resetting',
+            gameState: 'resetting',
+            resettingMessage: '對局安全重設中，保留席次與連線...',
             lastActivityTime: Date.now()
           });
+
+          // 階段 2：安全清除遊戲歷程後，將狀態切換回 ready / waiting
+          setTimeout(async () => {
+            try {
+              const updatedPlayers = players.map(p => ({
+                ...p,
+                readyToStart: false,
+                role: '',
+                roleConfirmed: false,
+                isAmbushed: false,
+                isPermanentlyAmbushed: false,
+                inspectHistory: [],
+                abilityHistory: [],
+                confusedRound: null
+              }));
+
+              await docRef.update({
+                status: 'waiting',
+                gameState: 'ready',
+                players: updatedPlayers,
+                rounds: [],
+                currentRoundIdx: 0,
+                currentTurnPlayerId: null,
+                currentSpeakerId: null,
+                lastCalculatedResult: null,
+                gameOverData: null,
+                gameOverRestartVotes: {},
+                restartVoteData: null,
+                closeVoteData: null,
+                waitingSince: Date.now(),
+                lastActivityTime: Date.now()
+              });
+            } catch(err) {
+              console.error('狀態機切換至 ready 失敗:', err);
+            }
+          }, 350);
         } else {
           transaction.update(docRef, {
             gameOverRestartVotes: votes,
@@ -2589,8 +3640,19 @@ function checkWatermarkUploadedState() {
       }
     }
 
+    // 依要求1：安全的狀態機 (State Machine) 重置過渡邏輯：監聽到 resetting 時鎖定 UI 並暫停舊資料處理
+    if (room.status === 'resetting' || room.gameState === 'resetting') {
+      showOnlineSubView(null);
+      const overlay = document.getElementById('onlResettingStateOverlay');
+      if (overlay) overlay.classList.remove('hidden');
+      return; // 立即返回暫停舊資料處理，嚴防 Null 錯誤！
+    } else {
+      const overlay = document.getElementById('onlResettingStateOverlay');
+      if (overlay) overlay.classList.add('hidden');
+    }
+
     // 依 room.status 派發視圖
- if (room.status === 'waiting') {
+ if (room.status === 'waiting' || room.gameState === 'ready') {
  window._currentGameOverRenderedId = null;
  showOnlineSubView('onlSecLobby');
  renderOnlineLobby(room, me);
@@ -2600,9 +3662,11 @@ function checkWatermarkUploadedState() {
  } else if (room.status === 'playing') {
  showOnlineSubView('onlSecTurn');
  renderOnlineTurnView(room, me);
- // 依要求7：若輪到該玩家行動，頁面自動移到最上方
+ // 依要求7：若輪到該玩家行動，頁面自動移到最上方，並觸發古典編鐘提神音效
  if (room.currentTurnPlayerId === myOnlinePlayerId && window._lastScrolledTurnActionId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {
  window._lastScrolledTurnActionId = myOnlinePlayerId + '_' + room.currentRoundIdx;
+ if (window.soundCtrl) window.soundCtrl.playTurnChime();
+ showToast('🔔 輪到您的回合，請查驗獸首！', 'success', 2500);
  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
  }
  } else if (room.status === 'discussion' || room.status === 'voting') {
@@ -2924,43 +3988,48 @@ function checkWatermarkUploadedState() {
     // 換座：順時針/逆時針換位
     let _shiftSeatDebounceTimer = null;
 
+    // 依要求1：使用 Firebase Transaction 實作『佔用座位』的原子化寫入 (Atomic Operation)，優雅降級 Toast 提示
     async function shiftMySeat(delta) {
       if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
       const docRef = db.doc(ONLINE_ROOM_DOC);
-
-      // 依要求3：剔除玩家後換座不lag！採用本機樂觀更新(0ms響應) + 防抖合併寫入雲端
-      let room = onlineRoomData;
-      let players = room.players ? [...room.players] : [];
-      let me = players.find(p => p.id === myOnlinePlayerId);
+      const me = (onlineRoomData.players || []).find(p => p.id === myOnlinePlayerId);
       if (!me) return;
 
       const oldSeat = (me.seatIndex !== undefined && me.seatIndex !== null) ? me.seatIndex : 0;
       const targetSeat = (oldSeat + delta + 8) % 8;
 
-      const other = players.find(p => p.seatIndex === targetSeat);
-      if (other) {
-        other.seatIndex = oldSeat;
-      }
-      me.seatIndex = targetSeat;
-      room.players = players;
+      try {
+        await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(docRef);
+          if (!snap.exists) return;
+          const data = snap.data();
+          let players = data.players ? [...data.players] : [];
 
-      // 立即本機重繪大廳圓形座位，手感絲滑秒響應
-      renderOnlineLobby(room, me);
+          const currentMe = players.find(p => p.id === myOnlinePlayerId);
+          if (!currentMe) return;
 
-      // 防抖同步寫入 Firestore，避免連續點擊引發交易衝突或網路卡頓
-      if (_shiftSeatDebounceTimer) {
-        clearTimeout(_shiftSeatDebounceTimer);
-      }
-      _shiftSeatDebounceTimer = setTimeout(async () => {
-        try {
-          await docRef.update({
+          const currentOldSeat = currentMe.seatIndex;
+          const occupant = players.find(p => p.seatIndex === targetSeat);
+
+          if (occupant && occupant.id !== myOnlinePlayerId) {
+            // 原子化對換席次
+            occupant.seatIndex = currentOldSeat;
+          }
+          currentMe.seatIndex = targetSeat;
+
+          transaction.update(docRef, {
             players: players,
             lastActivityTime: Date.now()
           });
-        } catch(e) {
-          console.error('同步換座至雲端失敗:', e);
+        });
+        showToast('座位調整成功！', 'success', 1800);
+      } catch(e) {
+        console.error('原子佔用座位失敗:', e);
+        showToast('⚠️ 座位發生競爭衝突，已為您自動同步最新席次！', 'warning', 2500);
+        if (onlineRoomData) {
+          renderOnlineLobby(onlineRoomData, onlineRoomData.players.find(p => p.id === myOnlinePlayerId));
         }
-      }, 100);
+      }
     }
     window.shiftMySeat = shiftMySeat;
 
@@ -2995,6 +4064,7 @@ function checkWatermarkUploadedState() {
       });
     }
 
+    // 依要求1：使用 Firebase Transaction 實作『佔用顏色』的原子化寫入 (Atomic Operation)，優雅降級 Toast 提示
     async function claimOnlineColor(colorId) {
       if (!onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
       const docRef = db.doc(ONLINE_ROOM_DOC);
@@ -3014,14 +4084,19 @@ function checkWatermarkUploadedState() {
           const me = players.find(p => p.id === myOnlinePlayerId);
           if (me) {
             me.colorId = colorId;
-            transaction.update(docRef, { players: players });
+            transaction.update(docRef, { players: players, lastActivityTime: Date.now() });
           }
         });
+        showToast('顏色選擇成功！', 'success');
       } catch(e) {
         if (e.message === 'COLOR_TAKEN') {
-          alert('此顏色剛被其他玩家選走囉，請選擇其他可用顏色！');
+          showToast('⚠️ 此顏色剛被其他玩家搶先選走囉！已為您更新可用選項。', 'warning');
+          if (onlineRoomData) {
+            renderOnlineColorPicker(onlineRoomData, onlineRoomData.players.find(p => p.id === myOnlinePlayerId));
+          }
         } else {
           console.error('選色失敗:', e);
+          showToast('選色同步延遲，已重新整理。', 'info');
         }
       }
     }
@@ -3202,6 +4277,7 @@ function checkWatermarkUploadedState() {
    }
  }
  if (!me) return;
+ initTouchRevealCard();
  if (!me.role) {
    const ALL_8_ROLES = ['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮', '老朝奉', '藥不然', '鄭國渠'];
    const used = new Set((room.players || []).map(p => p.role).filter(Boolean));
@@ -3320,6 +4396,16 @@ function checkWatermarkUploadedState() {
  if (actingPlayer && actingTag) {
  const pc = COLOR_PALETTE.find(c => c.id === actingPlayer.colorId) || COLOR_PALETTE[0];
  actingTag.innerHTML = `<span class="${pc.bgClass} px-2 py-0.5 rounded text-xs font-black mr-1 inline-flex items-center justify-center">${pc.name}</span><span class="text-xs font-bold text-neutral-100">${actingPlayer.name}</span>`;
+ }
+
+ // 依要求4：無聲視覺回饋 (當狀態判定為『我的回合』時，提供呼吸光暈動畫套用於玩家操作區)
+ const myTurnBox = document.getElementById('onlMyTurnActionBox');
+ if (myTurnBox) {
+   if (isMyTurn) {
+     myTurnBox.classList.add('my-turn-active-glow');
+   } else {
+     myTurnBox.classList.remove('my-turn-active-glow');
+   }
  }
 
  // 修改1: 手機傳遞順序畫面一律即時渲染，確保所有角色（如鄭國渠等）無論輪到誰都能看到！
@@ -3489,22 +4575,37 @@ function checkWatermarkUploadedState() {
  }
  }
 
- // Step B: 角色能力面板控制
+ // 依要求1：單螢幕無滾動緊湊分步導引儀表板 (Stepper Tabs Controller)
+ const stepAContainer = document.getElementById('onlStepA');
  const stepBContainer = document.getElementById('onlStepB');
- if (currentSubStep === 'b' || currentSubStep === 'c') {
- stepBContainer.classList.remove('hidden');
- renderOnlineRoleAbilitySection(room, me, curRound, myLog);
- } else {
- stepBContainer.classList.add('hidden');
- }
-
- // Step C: 指定下一位玩家面板控制
  const stepCContainer = document.getElementById('onlStepC');
- if (currentSubStep === 'c') {
- stepCContainer.classList.remove('hidden');
- renderOnlineStepCSection(room, me, curRound);
+
+ if (currentSubStep === 'b') {
+   updateTurnStepperUI('b');
+   if (stepAContainer) stepAContainer.classList.add('hidden');
+   if (stepCContainer) stepCContainer.classList.add('hidden');
+   if (stepBContainer) {
+     stepBContainer.classList.remove('hidden');
+     stepBContainer.classList.add('slide-in-view');
+     renderOnlineRoleAbilitySection(room, me, curRound, myLog);
+   }
+ } else if (currentSubStep === 'c') {
+   updateTurnStepperUI('c');
+   if (stepAContainer) stepAContainer.classList.add('hidden');
+   if (stepBContainer) stepBContainer.classList.add('hidden');
+   if (stepCContainer) {
+     stepCContainer.classList.remove('hidden');
+     stepCContainer.classList.add('slide-in-view');
+     renderOnlineStepCSection(room, me, curRound);
+   }
  } else {
- stepCContainer.classList.add('hidden');
+   updateTurnStepperUI('a');
+   if (stepAContainer) {
+     stepAContainer.classList.remove('hidden');
+     stepAContainer.classList.add('slide-in-view');
+   }
+   if (stepBContainer) stepBContainer.classList.add('hidden');
+   if (stepCContainer) stepCContainer.classList.add('hidden');
  }
  }
 
@@ -3569,6 +4670,17 @@ else {
  });
  }
 
+ // 依要求3：鑒寶揭曉音效 (真品古箏泛音，贗品懸疑木魚，點擊木質印章)
+ if (window.soundCtrl) {
+   if (displayText.includes('真品')) {
+     window.soundCtrl.playGuzhengReal();
+   } else if (displayText.includes('贗品') || displayText.includes('偷襲') || displayText.includes('看不懂') || displayText.includes('無法辨別')) {
+     window.soundCtrl.playMuyuFake();
+   } else {
+     window.soundCtrl.playClick();
+   }
+ }
+
  // 即時寫入 Firestore 防重整反悔
  myLog.inspect = onlMyInspectedBeastsInTurn;
  await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
@@ -3578,6 +4690,7 @@ else {
  window.onlInspectBeast = onlInspectBeast;
 
  async function onlGoToStepB() {
+ if (window.soundCtrl) window.soundCtrl.playScrollTransition();
  const room = onlineRoomData;
  const me = room.players.find(p => p.id === myOnlinePlayerId);
  const isUnderAmbush = me.isAmbushed || me.isPermanentlyAmbushed;
@@ -4076,6 +5189,7 @@ else {
  }
 
  myLog.subStep = 'c';
+ if (window.soundCtrl) window.soundCtrl.playScrollTransition();
  await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
 
  renderOnlineMyActiveTurn(room, me, curRound);
@@ -4512,12 +5626,14 @@ async function onlConfirmPassNextPlayer() {
  if (tipSeat) tipSeat.innerText = '全員發言完畢';
  }
 
- // 輸入框顯示控制 (只有輪到我且在自由發言狀態時才顯示發言框)
+ // 輸入框顯示控制 (只有輪到我且在自由發言狀態時才顯示發言框，並附帶無聲呼吸光暈)
  const inputCard = document.getElementById('onlMySpeechInputBox');
  if (isMySpeechTurn && room.status === 'discussion') {
  inputCard.classList.remove('hidden');
- } else {
+ inputCard.classList.add('my-turn-active-glow');
+ } else if (inputCard) {
  inputCard.classList.add('hidden');
+ inputCard.classList.remove('my-turn-active-glow');
  }
 
  // 渲染三輪發言列表 (從上往下，前幾輪自動折疊，自己說的放左邊，他人說的放右邊)
@@ -6152,52 +7268,154 @@ pDiv.innerHTML = `
    _lastWatchdogDiscussionCheck = now;
  }
 
- // 房內首位真人負責驅動
- const firstHuman = (room.players || []).find(p => !p.id.startsWith('mock_p_'));
- if (firstHuman && firstHuman.id !== myOnlinePlayerId) return;
+ // =========================================================================
+ // 2. 明確主機驅動權限 (Host Authority Pattern)
+ // =========================================================================
+ function getRoomHostId(r) {
+   if (!r || !r.players) return null;
+   const activeHumans = r.players.filter(p => p.id && !p.id.startsWith('mock_p_'));
+   return activeHumans.length > 0 ? activeHumans[0].id : null;
+ }
+
+ const hostId = getRoomHostId(room);
+ const isHost = hostId === myOnlinePlayerId;
+
+ // 只有房主客戶端具備驅動電腦玩家的計算權限，嚴防多端衝突或推諉
+ if (!isHost) return;
 
  const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
  const curRound = room.rounds ? room.rounds[curRoundIdx] : null;
  if (!curRound && room.status !== 'person_voting') return;
 
- // 防死鎖：若單次鎖定超過 4 秒，強制解鎖
+ // 防死鎖：若單次鎖定超過 4 秒，強制釋放鎖
  if (_mockActionPending && (now - _lastMockActionTime > 4000)) {
- _mockActionPending = false;
+   _mockActionPending = false;
  }
  if (_mockActionPending) return;
 
- // 1. 查驗行動階段：當前輪到電腦玩家 (加速)
+ // 1. 查驗行動階段：輪到電腦玩家
  if (room.status === 'playing' && room.currentTurnPlayerId && room.currentTurnPlayerId.startsWith('mock_p_')) {
- await executeMockTurnStep(room, room.currentTurnPlayerId, curRound);
- return;
+   const botP = room.players.find(p => p.id === room.currentTurnPlayerId);
+   if (botP) {
+     startBotSafetyWatchdog(room, 'turn_' + botP.id);
+     await executeMockTurnStep(room, botP.id, curRound);
+     return;
+   }
  }
 
- // 2. 自由發言階段：當前輪到電腦玩家發言 (除發言階段外其他皆加速，發言維持原速)
+ // 2. 發言階段：輪到電腦玩家發言
  if (room.status === 'discussion' && room.currentSpeakerId && room.currentSpeakerId.startsWith('mock_p_')) {
- await executeMockSpeechStep(room, room.currentSpeakerId, curRound);
- return;
+   const botP = room.players.find(p => p.id === room.currentSpeakerId);
+   if (botP) {
+     startBotSafetyWatchdog(room, 'speech_' + botP.id);
+     await executeMockSpeechStep(room, botP.id, curRound);
+     return;
+   }
  }
 
- // 3. 個人鑑寶投票階段：有電腦玩家未投票 (加速)
+ // 3. 鑑寶投票階段：電腦玩家投票
  if (room.status === 'voting') {
- const votes = (curRound && curRound.votes) ? curRound.votes : {};
- const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !votes[p.id]);
- if (unvotedMock) {
- await executeMockVoteStep(room, unvotedMock.id, curRound);
- return;
- }
+   const votes = (curRound && curRound.votes) ? curRound.votes : {};
+   const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !votes[p.id]);
+   if (unvotedMock) {
+     startBotSafetyWatchdog(room, 'vote_' + unvotedMock.id);
+     await executeMockVoteStep(room, unvotedMock.id, curRound);
+     return;
+   }
  }
 
- // 4. 鑑人投票階段：有電腦玩家未投票 (加速)
+ // 4. 鑑人投票階段：電腦玩家指認
  if (room.status === 'person_voting') {
- const pVotes = room.personVotes || {};
- const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !pVotes[p.id]);
- if (unvotedMock) {
- await executeMockPersonVoteStep(room, unvotedMock.id);
- return;
- }
+   const pVotes = room.personVotes || {};
+   const unvotedMock = (room.players || []).find(p => p.id.startsWith('mock_p_') && !pVotes[p.id]);
+   if (unvotedMock) {
+     startBotSafetyWatchdog(room, 'pvote_' + unvotedMock.id);
+     await executeMockPersonVoteStep(room, unvotedMock.id);
+     return;
+   }
  }
  }, 400);
+
+ // =========================================================================
+ // 3. 強制防禦性超時推進 (Safety Fallback Watchdog Timer - 5s Timeout)
+ // =========================================================================
+ let _botSafetyTimer = null;
+
+ function startBotSafetyWatchdog(room, actionKey) {
+   clearBotSafetyWatchdog();
+   _botSafetyTimer = setTimeout(async () => {
+     console.warn(`[Bot Watchdog] 偵測到電腦玩家動作超時 (>5s)，強制推進！action=${actionKey}`);
+     try {
+       await forceNextTurn(room);
+     } catch(e) {
+       console.error('看門狗強制推進失敗:', e);
+     }
+   }, 5000);
+ }
+
+ function clearBotSafetyWatchdog() {
+   if (_botSafetyTimer) {
+     clearTimeout(_botSafetyTimer);
+     _botSafetyTimer = null;
+   }
+ }
+
+ async function forceNextTurn(room) {
+   clearBotSafetyWatchdog();
+   _mockActionPending = false;
+   if (!isFirebaseReady || !db) return;
+   const docRef = db.doc(ONLINE_ROOM_DOC);
+
+   try {
+     const snap = await docRef.get();
+     if (!snap.exists) return;
+     const freshRoom = snap.data();
+     const curRoundIdx = freshRoom.currentRoundIdx || 0;
+     const curRound = freshRoom.rounds && freshRoom.rounds[curRoundIdx];
+     if (!curRound) return;
+
+     if (freshRoom.status === 'playing') {
+       const passOrder = curRound.passOrder || [];
+       const remaining = (freshRoom.players || []).filter(p => !passOrder.includes(p.id));
+       if (remaining.length > 0) {
+         const nextP = remaining[0];
+         passOrder.push(nextP.id);
+         await docRef.update({
+           rounds: freshRoom.rounds,
+           currentTurnPlayerId: nextP.id,
+           currentTurnDeadline: Date.now() + 30000,
+           lastActivityTime: Date.now()
+         });
+         showToast(`⚡ 系統防呆推進：指定【${nextP.name}】接棒`, 'info', 2000);
+       } else {
+         if (typeof executeOnlineAdvanceToDiscussion === 'function') {
+           await executeOnlineAdvanceToDiscussion(freshRoom);
+         }
+       }
+     } else if (freshRoom.status === 'discussion') {
+       const speechOrder = curRound.speechOrder || [];
+       const nextIdx = (curRound.speechIndex !== undefined ? curRound.speechIndex : 0) + 1;
+       curRound.speechIndex = nextIdx;
+       if (nextIdx >= speechOrder.length || nextIdx >= 8) {
+         await docRef.update({
+           status: 'voting',
+           currentSpeakerId: null,
+           rounds: freshRoom.rounds,
+           lastActivityTime: Date.now()
+         });
+       } else {
+         await docRef.update({
+           currentSpeakerId: speechOrder[nextIdx],
+           rounds: freshRoom.rounds,
+           lastActivityTime: Date.now()
+         });
+       }
+     }
+   } catch(err) {
+     console.error('forceNextTurn error:', err);
+   }
+ }
+ window.forceNextTurn = forceNextTurn;
 
  async function executeMockTurnStep(room, mockPlayerId, curRound) {
  _mockActionPending = true;
@@ -6295,10 +7513,12 @@ pDiv.innerHTML = `
  lastActivityTime: Date.now()
  });
  }
+ clearBotSafetyWatchdog();
  } catch(e) {
  console.error('虛擬玩家查驗失敗:', e);
  } finally {
  _mockActionPending = false;
+ clearBotSafetyWatchdog();
  }
  }, delay);
  }
@@ -6307,9 +7527,16 @@ pDiv.innerHTML = `
  _mockActionPending = true;
  _lastMockActionTime = Date.now();
 
- // 延遲 1.5 \~ 2.8 秒模擬發言
- const delay = 1500 + Math.floor(Math.random() * 1300);
+ const mockP = (room.players || []).find(p => p.id === mockSpeakerId);
+ const speakerBadge = document.getElementById('onlCurrentSpeakerBadge');
+ if (mockP && speakerBadge) {
+   speakerBadge.innerHTML = `<span class="text-amber-400 font-bold animate-pulse font-mono">🤖 電腦玩家【${mockP.name}】思考中...</span>`;
+ }
+
+ // 延遲 1.5 ~ 2.5 秒模擬自然擬人化發言節奏
+ const delay = 1500 + Math.floor(Math.random() * 1000);
  setTimeout(async () => {
+   clearBotSafetyWatchdog();
  try {
  const freshSnap = await db.doc(ONLINE_ROOM_DOC).get();
  const freshRoom = freshSnap.data();
@@ -6364,10 +7591,13 @@ pDiv.innerHTML = `
  lastActivityTime: Date.now()
  });
  }
+ clearBotSafetyWatchdog();
+ showToast(`🤖 電腦玩家【${mockP.name}】已發言`, 'info', 1800);
  } catch(e) {
  console.error('虛擬玩家發言失敗:', e);
  } finally {
  _mockActionPending = false;
+ clearBotSafetyWatchdog();
  }
  }, delay);
  }
@@ -9803,6 +11033,114 @@ const inspectStr = (rData.inspect && rData.inspect.length > 0) ? rData.inspect.j
       </div>
     </div>
   </div>
+
+  <!-- 雅韻美學與音響設定抽屜 (Taste & Sound Settings Drawer) -->
+  <div id="tasteSettingsDrawerBackdrop" class="hidden fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-[10000] transition-opacity duration-300 opacity-0" onclick="toggleTasteSettingsDrawer()"></div>
+  <aside id="tasteSettingsDrawer" class="fixed top-0 right-0 h-full w-full max-w-xs sm:max-w-sm bg-neutral-900 border-l border-amber-600/30 z-[10001] shadow-2xl transform translate-x-full transition-transform duration-300 ease-out flex flex-col justify-between overflow-y-auto">
+    <div class="p-5 space-y-5">
+      <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
+        <h3 class="text-sm font-black text-amber-400 flex items-center space-x-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>新中式美學與音效調校</span>
+        </h3>
+        <button onclick="toggleTasteSettingsDrawer()" class="text-neutral-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <!-- 1. 新中式視覺微調 (Taste & Aesthetics) -->
+      <div class="space-y-3">
+        <div class="text-xs font-bold text-amber-300 flex items-center space-x-1.5">
+          <span>🎨</span><span>視覺風格參數 (CSS Variables)</span>
+        </div>
+        
+        <!-- 裝飾程度 -->
+        <div class="space-y-1">
+          <label class="text-[11px] text-neutral-400 flex justify-between">
+            <span>古典裝飾程度</span>
+            <span id="labelOrnamentLevel" class="text-amber-400 font-mono">1 - 雅致古風</span>
+          </label>
+          <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+            <button type="button" onclick="setOrnamentLevel(0)" class="py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 font-bold hover:border-amber-500">極簡現代</button>
+            <button type="button" onclick="setOrnamentLevel(1)" class="py-1.5 rounded-lg border border-amber-600 bg-amber-950/40 text-amber-300 font-bold">雅致古風</button>
+            <button type="button" onclick="setOrnamentLevel(2)" class="py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 font-bold hover:border-amber-500">雙線暗金</button>
+          </div>
+        </div>
+
+        <!-- 浮水印透明度 -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px] text-neutral-400">
+            <span>獸首/立繪浮水印透明度</span>
+            <span id="labelWmOpacity" class="text-amber-400 font-mono">18%</span>
+          </div>
+          <input type="range" min="5" max="30" value="18" id="sliderWmOpacity" oninput="setWmOpacity(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-lg">
+          <div class="flex justify-between text-[9px] text-neutral-500">
+            <span>5% (極淡)</span>
+            <span>18% (推薦)</span>
+            <span>30% (深顯)</span>
+          </div>
+        </div>
+
+        <!-- 金屬調色與底色深邃度 -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="space-y-1">
+            <span class="text-[11px] text-neutral-400 block">金屬金調</span>
+            <div class="flex space-x-1 text-[10px]">
+              <button type="button" onclick="setGoldAccent('bronze')" class="flex-1 py-1 rounded bg-neutral-800 border border-neutral-700 hover:border-amber-500 text-amber-600 font-bold">啞光銅</button>
+              <button type="button" onclick="setGoldAccent('amber')" class="flex-1 py-1 rounded bg-amber-950/40 border border-amber-500 text-amber-300 font-bold">琥珀金</button>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[11px] text-neutral-400 block">底色深邃度</span>
+            <div class="flex space-x-1 text-[10px]">
+              <button type="button" onclick="setBgDepth('deep')" class="flex-1 py-1 rounded bg-neutral-950 border border-amber-500 text-neutral-200 font-bold">夜黑</button>
+              <button type="button" onclick="setBgDepth('charcoal')" class="flex-1 py-1 rounded bg-neutral-800 border border-neutral-700 hover:border-amber-500 text-neutral-300 font-bold">石墨灰</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-neutral-800 pt-3 space-y-3">
+        <div class="text-xs font-bold text-amber-300 flex items-center justify-between">
+          <span class="flex items-center space-x-1.5"><span>🎵</span><span>國風古典音響控制器 (Web Audio)</span></span>
+          <button type="button" onclick="toggleSoundMuteAll()" id="btnMuteToggle" class="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 hover:text-amber-400 border border-neutral-700">🔊 靜音: 關</button>
+        </div>
+
+        <!-- BGM 滑桿 -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px] text-neutral-400">
+            <span>懸疑氛圍環境配樂 (BGM)</span>
+            <span id="labelBgmVol" class="text-amber-400 font-mono">25%</span>
+          </div>
+          <input type="range" min="0" max="100" value="25" id="sliderBgmVol" oninput="setBgmVol(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-lg">
+        </div>
+
+        <!-- SFX 滑桿 -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px] text-neutral-400">
+            <span>傳統打擊與國樂泛音 (SFX)</span>
+            <span id="labelSfxVol" class="text-amber-400 font-mono">65%</span>
+          </div>
+          <input type="range" min="0" max="100" value="65" id="sliderSfxVol" oninput="setSfxVol(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-lg">
+        </div>
+
+        <!-- 試聽音效按鍵 -->
+        <div class="pt-1">
+          <span class="text-[10px] text-neutral-500 block mb-1.5">音效試聽體驗：</span>
+          <div class="grid grid-cols-4 gap-1.5 text-[10px]">
+            <button type="button" onclick="soundCtrl.playClick()" class="py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200">印章叩石</button>
+            <button type="button" onclick="soundCtrl.playTurnChime()" class="py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-amber-300">編鐘迎輪</button>
+            <button type="button" onclick="soundCtrl.playGuzhengReal()" class="py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-blue-300">真品古箏</button>
+            <button type="button" onclick="soundCtrl.playMuyuFake()" class="py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-rose-300">贗品木魚</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-neutral-800 bg-neutral-950/60">
+      <button onclick="toggleTasteSettingsDrawer()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow transition">
+        ✓ 完成並保存設定
+      </button>
+    </div>
+  </aside>
 
 </body>
 </html>
