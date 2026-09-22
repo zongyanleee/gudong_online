@@ -3728,6 +3728,9 @@ service cloud.firestore {
       onlSelectedPassNextId = null;
       onlMyVoteMap = {};
       onlYaoTargetId = null;
+      onlTempZhengBlock = null;
+      onlTempLaoActive = false;
+      onlFangZhenSelectedTargetId = null;
       const rb = document.getElementById('onlAppraiseResultBox');
       if (rb) rb.classList.add('hidden');
       const sb = document.getElementById('onlStepB');
@@ -5697,6 +5700,11 @@ else {
           </button>
         `;
 
+        // 嚴格驗證：onlTempZhengBlock 必須屬於本回合 4 件獸首之一，或者是 '__SKIP__'，否則無效重設為 null
+        const currentRoundBeastNames = sortedBeasts.map(b => b.name);
+        if (onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__' && !currentRoundBeastNames.includes(onlTempZhengBlock)) {
+          onlTempZhengBlock = null;
+        }
         const hasZhengSelected = (onlTempZhengBlock !== null && onlTempZhengBlock !== undefined);
 
         container.innerHTML = `
@@ -5867,7 +5875,14 @@ else {
       if (!onlineRoomData) return;
       const room = onlineRoomData;
       const curRound = room.rounds[room.currentRoundIdx];
-      const blockChoice = onlTempZhengBlock || '__SKIP__';
+      const currentRoundBeastNames = (curRound.beasts || []).map(b => b.name);
+
+      // 嚴格校驗：若所選獸首不屬於本輪4件獸首且非 __SKIP__，強制防禦
+      let blockChoice = onlTempZhengBlock;
+      if (blockChoice !== '__SKIP__' && (!blockChoice || !currentRoundBeastNames.includes(blockChoice))) {
+        blockChoice = '__SKIP__';
+        onlTempZhengBlock = '__SKIP__';
+      }
 
       if (blockChoice === '__SKIP__') {
         curRound.blockedBeast = null;
@@ -5877,12 +5892,13 @@ else {
 
       if (!curRound.turnLogs) curRound.turnLogs = {};
       if (!curRound.turnLogs[myOnlinePlayerId]) curRound.turnLogs[myOnlinePlayerId] = {};
+      curRound.turnLogs[myOnlinePlayerId].blockedBeast = curRound.blockedBeast;
       curRound.turnLogs[myOnlinePlayerId].ability = (blockChoice === '__SKIP__') ? '不封鎖任何獸首' : `封鎖【${blockChoice}】`;
       curRound.turnLogs[myOnlinePlayerId].abilityLocked = true;
 
       // 選擇後按下確認鎖定鍵即可到下階段 (Step C)
       onlGoToStepC();
-      db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
+      await db.doc(ONLINE_ROOM_DOC).update({ rounds: room.rounds });
       const me = room.players.find(p => p.id === myOnlinePlayerId);
       renderOnlineRoleAbilitySection(room, me, curRound, curRound.turnLogs[myOnlinePlayerId]);
     }
@@ -5964,8 +5980,16 @@ else {
  myLog.ability = onlTempLaoActive ? '開啟擾亂（真偽反轉）' : '關閉擾亂';
  curRound.laoChaoFengActive = !!onlTempLaoActive;
  } else if (me.role === '鄭國渠') {
- myLog.ability = (onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__') ? `封鎖【${onlTempZhengBlock}】` : '不封鎖任何獸首';
- curRound.blockedBeast = (onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__') ? onlTempZhengBlock : null;
+ const currentRoundBeastNames = (curRound.beasts || []).map(b => b.name);
+ if (onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__' && currentRoundBeastNames.includes(onlTempZhengBlock)) {
+   myLog.ability = `封鎖【${onlTempZhengBlock}】`;
+   myLog.blockedBeast = onlTempZhengBlock;
+   curRound.blockedBeast = onlTempZhengBlock;
+ } else {
+   myLog.ability = '不封鎖任何獸首';
+   myLog.blockedBeast = null;
+   curRound.blockedBeast = null;
+ }
  } else if (me.role === '藥不然') {
  myLog.ability = '跳過不偷襲';
  } else if (me.role === '方震') {
@@ -6391,14 +6415,29 @@ async function onlConfirmPassNextPlayer() {
     }
 
     // 3. 鄭國渠：自己頭像上方顯示 [封鼠] (或對應獸首) 或 [不封]
+    // 嚴格修復：必須檢驗被封鎖獸首是否確實屬於「該回合 (r)」之4件獸首，絕不跨輪繼承或顯示上回合獸首！
     if (me.role === '鄭國渠') {
       const curRoundIdx = (room && room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
       const isCurrentRound = (r.roundNum === curRoundIdx + 1);
-      let blocked = r.blockedBeast;
-      if (!blocked && isCurrentRound && onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__') {
+      const rBeastNames = (r.beasts || []).map(b => b.name);
+
+      let blocked = null;
+      // 1. 優先從該回合已儲存之資料讀取，且嚴格檢驗必須為該回合之獸首
+      if (r.blockedBeast && rBeastNames.includes(r.blockedBeast)) {
+        blocked = r.blockedBeast;
+      } else if (r.turnLogs && r.turnLogs[me.id] && r.turnLogs[me.id].blockedBeast && rBeastNames.includes(r.turnLogs[me.id].blockedBeast)) {
+        blocked = r.turnLogs[me.id].blockedBeast;
+      } else if (r.turnLogs && r.turnLogs[me.id] && r.turnLogs[me.id].ability && r.turnLogs[me.id].ability.includes('封鎖【')) {
+        const m = r.turnLogs[me.id].ability.match(/【(.*?)】/);
+        if (m && rBeastNames.includes(m[1])) {
+          blocked = m[1];
+        }
+      } else if (isCurrentRound && onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__' && rBeastNames.includes(onlTempZhengBlock)) {
+        // 2. 僅限當前進行中之回合，且暫存變數必須屬於「本回合」4 件獸首之一
         blocked = onlTempZhengBlock;
       }
-      if (blocked && blocked !== '__SKIP__' && !blocked.includes('不封')) {
+
+      if (blocked && !blocked.includes('不封')) {
         const beastChar = blocked.replace(/[【】]/g, '').slice(-1);
         return `<span class="text-[8px] leading-tight font-mono font-black px-1 py-0.5 rounded mb-0.5 bg-purple-950 text-purple-300 border border-purple-500 shadow-xs animate-pulse">[封${beastChar}]</span>`;
       } else {
@@ -6696,8 +6735,9 @@ function renderPassOrderRows(room, curRound) {
         const yaoTarget = curRound.ambushedPlayerId || onlYaoTargetId;
         skillStatus = `【主動技能】暗中偷襲：每輪可偷襲 1 位玩家。本輪狀態：${yaoTarget ? `⚔️ 已偷襲【${yaoTarget}】` : '本輪尚未偷襲'}。`;
       } else if (me.role === '鄭國渠') {
-        const block = curRound.blockedBeast || onlTempZhengBlock;
-        skillStatus = `【主動技能】贗造封鎖：每輪可封鎖 1 件獸首。本輪狀態：${block ? `🔒 已封鎖【${block}】` : '本輪未封鎖'}。`;
+        const curRoundBeastNames = (curRound && curRound.beasts) ? curRound.beasts.map(b => b.name) : [];
+        const validBlock = (curRound && curRound.blockedBeast && curRoundBeastNames.includes(curRound.blockedBeast)) ? curRound.blockedBeast : ((onlTempZhengBlock && onlTempZhengBlock !== '__SKIP__' && curRoundBeastNames.includes(onlTempZhengBlock)) ? onlTempZhengBlock : null);
+        skillStatus = `【主動技能】贗造封鎖：每輪可封鎖 1 件獸首。本輪狀態：${validBlock ? `🔒 已封鎖【${validBlock}】` : '本輪未封鎖'}。`;
       } else {
         skillStatus = `正常查驗模式。`;
       }
@@ -7182,19 +7222,19 @@ container.appendChild(row);
               const isGood = campStr.includes('好人') || campStr.includes('許願');
               const isAmbushed = (r.turnLogs && r.ambushedPlayerId === me.id) || (log.ability && (log.ability.includes('偷襲') || log.ability.includes('封鎖')));
 
-              // 修改8：方震若被偷襲，玩家陣營查驗結果顯示遭偷襲，不會有查驗
-              if (isAmbushed) {
-                checksListHtml += `
-                  <div class="text-xs text-neutral-300 flex justify-between items-center pl-1">
-                    <span>• 第 ${rIdx + 1} 回合：遭偷襲 (能力封鎖)</span>
-                    <span class="font-bold text-rose-400">無法查驗</span>
-                  </div>
-                `;
-              } else if (log.fangZhenTargetId) {
+              // 依指示：方震的欄位是以他「實際操作的結果」定的，若該回合實際有查驗，嚴格顯示查驗結果，不會顯示被偷襲！
+              if (log.fangZhenTargetId) {
                 checksListHtml += `
                   <div class="text-xs text-neutral-200 flex justify-between items-center pl-1">
                     <span>• 第 ${rIdx + 1} 回合：查驗【${log.fangZhenTargetColor || ''}色 ${log.fangZhenTargetName || '玩家'}】</span>
                     <span class="font-black ${isGood ? 'text-emerald-400' : 'text-rose-400'}">${campStr.replace(/^查驗【.*?】：屬於/, '')}</span>
+                  </div>
+                `;
+              } else if (log.ability && (log.ability.includes('偷襲') || log.ability.includes('封鎖') || log.ability.includes('無法查驗'))) {
+                checksListHtml += `
+                  <div class="text-xs text-neutral-300 flex justify-between items-center pl-1">
+                    <span>• 第 ${rIdx + 1} 回合：遭偷襲 (能力封鎖)</span>
+                    <span class="font-bold text-rose-400">無法查驗</span>
                   </div>
                 `;
               }
@@ -7616,9 +7656,19 @@ container.appendChild(row);
  room.rounds[nextRoundIdx].blockedBeast = null;
  room.rounds[nextRoundIdx].laoChaoFengActive = false;
 
- // 修改6: 新回合重置角色受偷襲狀態 (姬雲浮若遭偷襲則維持永久封閉)
+ // 核心規則：推進至新回合時，將上回合延宕的偷襲效果 (pendingAmbush) 正式生效！
  room.players.forEach(p => {
- if (!p.isPermanentlyAmbushed) p.isAmbushed = false;
+   if (p.isPermanentlyAmbushed || p.pendingPermanentAmbush) {
+     p.isPermanentlyAmbushed = true;
+     p.isAmbushed = true;
+     p.pendingPermanentAmbush = false;
+   } else if (p.pendingAmbush) {
+     // 上回合被偷襲但已先操作完畢的玩家，偷襲效果在下回合正式生效！
+     p.isAmbushed = true;
+     p.pendingAmbush = false;
+   } else {
+     p.isAmbushed = false;
+   }
  });
 
  await db.doc(ONLINE_ROOM_DOC).update({
@@ -8882,13 +8932,37 @@ pDiv.innerHTML = `
      roundObj.turnLogs[mockPlayerId].yaoTargetId = targetP.id;
      roundObj.turnLogs[mockPlayerId].yaoTargetColor = tc.name;
      roundObj.turnLogs[mockPlayerId].ability = `偷襲【${tc.name}色 ${targetP.name}】`;
+     const passOrder = roundObj.passOrder || [];
+     const targetHasActed = passOrder.includes(targetP.id);
+
      if (targetP.role === '姬雲浮') {
-       targetP.isPermanentlyAmbushed = true;
+       if (targetHasActed) {
+         targetP.pendingPermanentAmbush = true;
+       } else {
+         targetP.isPermanentlyAmbushed = true;
+         targetP.isAmbushed = true;
+       }
      } else {
-       targetP.isAmbushed = true;
-       if (targetP.role === '方震') {
-         const xu = freshRoom.players.find(p => p.role === '許願');
-         if (xu) xu.isAmbushed = true;
+       if (targetHasActed) {
+         targetP.pendingAmbush = true;
+         targetP.isAmbushed = false;
+       } else {
+         targetP.isAmbushed = true;
+         targetP.pendingAmbush = false;
+       }
+     }
+
+     if (targetP.role === '方震') {
+       const xu = freshRoom.players.find(p => p.role === '許願');
+       if (xu) {
+         const xuHasActed = passOrder.includes(xu.id);
+         if (xuHasActed) {
+           xu.pendingAmbush = true;
+           xu.isAmbushed = false;
+         } else {
+           xu.isAmbushed = true;
+           xu.pendingAmbush = false;
+         }
        }
      }
    } else {
@@ -8931,9 +9005,15 @@ pDiv.innerHTML = `
  passOrder.push(nextP.id);
  roundObj.passOrder = passOrder;
 
+ // 電腦玩家完成行動：若受偷襲且非永久偷襲，消耗偷襲狀態
+ if (mockP && mockP.isAmbushed && !mockP.isPermanentlyAmbushed) {
+   mockP.isAmbushed = false;
+ }
+
  await db.doc(ONLINE_ROOM_DOC).update({
  currentTurnPlayerId: nextP.id,
  rounds: freshRoom.rounds,
+ players: freshRoom.players,
  lastActivityTime: Date.now()
  });
 
