@@ -4958,54 +4958,84 @@ service cloud.firestore {
   }
   window.renderWaitingTurnCircleSeats = renderWaitingTurnCircleSeats;
 
+  // 修改1：各回合發言紀錄統一樣式（與發言階段氣泡格式相同：他人靠左、自己靠右附帶 (您) 與頭像，支援折疊收合）
   function renderWaitingTurnSpeeches(room, me, curRound, containerId = 'onlWaitingSpeechesContainer') {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
+    const curRoundIdx = (room && room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
     const rounds = room.rounds || [];
     let hasAnySpeech = false;
 
-    rounds.forEach(r => {
-      const speeches = r.speeches || [];
-      if (speeches.length === 0) return;
-      hasAnySpeech = true;
+    [1, 2, 3].forEach(rNum => {
+      const r = rounds.find(x => x.roundNum === rNum);
+      const speeches = r ? (r.speeches || []) : [];
+      if (speeches.length > 0) hasAnySpeech = true;
 
+      if (rNum - 1 > curRoundIdx && speeches.length === 0) return;
+
+      const isCollapsed = !!onlCollapsedRoundsMap['turn_' + rNum];
       const roundCard = document.createElement('div');
-      roundCard.className = 'p-2 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-1.5';
+      roundCard.className = 'p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-1.5 shadow-md mb-2';
 
-      let speechesListHtml = '';
-      speeches.forEach(sp => {
-        const spPlayer = (room.players || []).find(p => p.id === sp.playerId || p.id === sp.speakerId);
-        const pc = spPlayer ? (COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];
-        const name = sp.speakerName || (spPlayer ? spPlayer.name : '玩家');
-        const isMe = (sp.playerId === myOnlinePlayerId || sp.speakerId === myOnlinePlayerId);
-
-        const cleanText = (sp.text || '').trim();
-        speechesListHtml += `
-          <div class="flex items-start space-x-2 py-1 border-b border-neutral-800/40 last:border-0">
-            <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-[10px] flex-shrink-0 mt-0.5" title="${name}">
-              ${getRepresentativeChar(name)}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center space-x-1.5">
-                <span class="text-[11px] font-bold text-neutral-300">${name}</span>
-                <span class="text-[9px] ${pc.bgClass} px-1 rounded text-neutral-950 font-black">${pc.name}色</span>
-                ${isMe ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded">我</span>' : ''}
-                ${sp.time ? `<span class="text-[9px] text-neutral-500 font-mono ml-auto">${sp.time}</span>` : ''}
-              </div>
-              <div class="text-xs text-neutral-200 mt-1 py-1 px-2.5 rounded-lg bg-neutral-950/90 border border-neutral-800 w-full block break-words break-all whitespace-pre-wrap speech-bubble-text" style="overflow-wrap: anywhere; word-break: break-word;">${cleanText}</div>
-            </div>
-          </div>
-        `;
-      });
-
-      roundCard.innerHTML = `
-        <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
-          <span class="font-bold text-amber-400">📜 第 ${r.roundNum} 回合發言紀錄 (${speeches.length} 則)：</span>
-        </div>
-        <div class="space-y-1">${speechesListHtml}</div>
+      const headerBtn = document.createElement('div');
+      headerBtn.className = "py-1.5 px-2.5 rounded-lg bg-neutral-900/90 border border-neutral-800 text-[11px] font-bold flex justify-between items-center cursor-pointer transition mb-1 hover:border-amber-500/50";
+      headerBtn.innerHTML = `
+        <span class="text-amber-400">🗣️ 第 ${rNum} 回合順時針發言 (${speeches.length}則)</span>
+        <span class="font-mono text-amber-400 text-[10px]">${isCollapsed ? '▶ 點擊展開' : '▼ 點擊收合'}</span>
       `;
+      headerBtn.onclick = () => {
+        onlCollapsedRoundsMap['turn_' + rNum] = !onlCollapsedRoundsMap['turn_' + rNum];
+        renderWaitingTurnSpeeches(room, me, curRound, containerId);
+      };
+      roundCard.appendChild(headerBtn);
+
+      if (!isCollapsed) {
+        if (speeches.length === 0) {
+          const emptyTip = document.createElement('div');
+          emptyTip.className = "text-[10px] text-neutral-600 font-mono py-1.5 text-center";
+          emptyTip.innerText = '（本回合尚無發言紀錄）';
+          roundCard.appendChild(emptyTip);
+        } else {
+          const speechOrder = (r && r.passOrder && r.passOrder.length > 0) ? r.passOrder : ((r && r.speechOrder) ? r.speechOrder : (room.players || []).map(p => p.id));
+          speechOrder.forEach(pId => {
+            const spPlayer = (room.players || []).find(p => p.id === pId);
+            if (!spPlayer) return;
+            const sp = speeches.find(s => s.playerId === pId || s.speakerId === pId);
+            if (!sp) return;
+            const pc = COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0];
+            const isMe = (pId === myOnlinePlayerId);
+            const cleanText = (sp.text || '').trim();
+
+            const row = document.createElement('div');
+            if (isMe) {
+              row.className = "flex items-start justify-end space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+              row.innerHTML = `
+                <div class="p-2.5 rounded-xl text-xs max-w-[72%] sm:max-w-[75%] shadow-md break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text bg-amber-950/80 border border-amber-500/70 text-amber-200 text-left" style="overflow-wrap: anywhere; word-break: break-word;">${cleanText}</div>
+                <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+                  <span class="text-xs font-bold text-amber-300 font-mono">(您) ${spPlayer.name}</span>
+                  <div style="background-color: ${pc.hex}; color: ${(pc.id === 'yellow' || pc.id === 'white' || pc.id === 'green') ? '#0a0a0a' : '#ffffff'};" class="w-7 h-7 rounded-full ${pc.bgClass} border border-amber-400 flex items-center justify-center font-black text-xs shadow">
+                    ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+                  </div>
+                </div>
+              `;
+            } else {
+              row.className = "flex items-start justify-start space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+              row.innerHTML = `
+                <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+                  <div style="background-color: ${pc.hex}; color: ${(pc.id === 'yellow' || pc.id === 'white' || pc.id === 'green') ? '#0a0a0a' : '#ffffff'};" class="w-7 h-7 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-xs shadow">
+                    ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+                  </div>
+                  <span class="text-xs font-bold text-neutral-300 font-mono">${spPlayer.name}</span>
+                </div>
+                <div class="p-2.5 rounded-xl text-xs max-w-[72%] sm:max-w-[75%] shadow-md break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text bg-neutral-900 border border-neutral-800 text-neutral-100 text-left" style="overflow-wrap: anywhere; word-break: break-word;">${cleanText}</div>
+              `;
+            }
+            roundCard.appendChild(row);
+          });
+        }
+      }
       container.appendChild(roundCard);
     });
 
@@ -7819,52 +7849,82 @@ container.appendChild(row);
         }
       }
 
-      // 3. 各回合發言欄 (發言紀錄)
+      // 3. 各回合發言欄 (發言紀錄) - 修改1：改成圖片格式（與前面遊玩時的顯示方式相同：他人靠左、自己靠右附帶 (您) 與頭像，支援折疊收合）
       const speechContainer = document.getElementById('onlPersonRefSpeechContainer');
       if (speechContainer) {
         speechContainer.innerHTML = '';
-        (room.rounds || []).forEach(r => {
-          const speeches = r.speeches || [];
-          const roundCard = document.createElement('div');
-          roundCard.className = 'p-2 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-1.5';
+        const rounds = room.rounds || [];
 
-          let speechesListHtml = '';
-          if (speeches.length === 0) {
-            speechesListHtml = '<div class="text-[10px] text-neutral-500 py-1 text-center font-mono">（本回合無發言記錄）</div>';
-          } else {
-            speeches.forEach(sp => {
-              const spPlayer = (room.players || []).find(p => p.id === sp.playerId || p.id === sp.speakerId);
-              const pc = spPlayer ? (COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];
-              const name = sp.speakerName || (spPlayer ? spPlayer.name : '玩家');
-              const isMe = (sp.playerId === myOnlinePlayerId || sp.speakerId === myOnlinePlayerId);
+        [1, 2, 3].forEach(rNum => {
+          const r = rounds.find(x => x.roundNum === rNum);
+          const speeches = r ? (r.speeches || []) : [];
 
-              speechesListHtml += `
-                <div class="flex items-start space-x-2 py-1 border-b border-neutral-800/50 last:border-0">
-                  <div class="w-6 h-6 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-[10px] flex-shrink-0 mt-0.5" title="${name}">
-                    ${getRepresentativeChar(name)}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center space-x-1.5">
-                      <span class="text-[11px] font-bold text-neutral-300">${name}</span>
-                      <span class="text-[9px] ${pc.bgClass} px-1 rounded text-neutral-950 font-black">${pc.name}色</span>
-                      ${isMe ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded">我</span>' : ''}
-                      ${sp.time ? `<span class="text-[9px] text-neutral-500 font-mono ml-auto">${sp.time}</span>` : ''}
-                    </div>
-                    <div class="text-xs text-neutral-200 mt-0.5 leading-relaxed bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80 break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text" style="overflow-wrap: anywhere; word-break: break-word;">
-                      ${sp.text}
-                    </div>
-                  </div>
-                </div>
-              `;
-            });
+          // 預設第 3 回合展開，第 1、2 回合預設收合；可自由點擊展開/收合
+          if (onlCollapsedRoundsMap['personRef_' + rNum] === undefined) {
+            onlCollapsedRoundsMap['personRef_' + rNum] = (rNum < 3 && speeches.length > 0);
           }
+          const isCollapsed = !!onlCollapsedRoundsMap['personRef_' + rNum];
 
-          roundCard.innerHTML = `
-            <div class="flex justify-between items-center text-xs border-b border-neutral-800 pb-1">
-              <span class="font-bold text-amber-400">📜 第 ${r.roundNum} 回合發言紀錄 (${speeches.length} 則)：</span>
-            </div>
-            <div class="space-y-1 max-h-60 overflow-y-auto pr-1">${speechesListHtml}</div>
+          const roundCard = document.createElement('div');
+          roundCard.className = 'p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-1.5 shadow-md mb-2';
+
+          const headerBtn = document.createElement('div');
+          headerBtn.className = "py-1.5 px-2.5 rounded-lg bg-neutral-900/90 border border-neutral-800 text-[11px] font-bold flex justify-between items-center cursor-pointer transition mb-1 hover:border-amber-500/50";
+          headerBtn.innerHTML = `
+            <span class="text-amber-400">🗣️ 第 ${rNum} 回合順時針發言 (${speeches.length}則)</span>
+            <span class="font-mono text-amber-400 text-[10px]">${isCollapsed ? '▶ 點擊展開' : '▼ 點擊收合'}</span>
           `;
+          headerBtn.onclick = () => {
+            onlCollapsedRoundsMap['personRef_' + rNum] = !onlCollapsedRoundsMap['personRef_' + rNum];
+            renderOnlinePersonVotingReference(room);
+          };
+          roundCard.appendChild(headerBtn);
+
+          if (!isCollapsed) {
+            if (speeches.length === 0) {
+              const emptyTip = document.createElement('div');
+              emptyTip.className = "text-[10px] text-neutral-600 font-mono py-1.5 text-center";
+              emptyTip.innerText = '（本回合尚無發言紀錄）';
+              roundCard.appendChild(emptyTip);
+            } else {
+              const speechOrder = (r && r.passOrder && r.passOrder.length > 0) ? r.passOrder : ((r && r.speechOrder) ? r.speechOrder : (room.players || []).map(p => p.id));
+              speechOrder.forEach(pId => {
+                const spPlayer = (room.players || []).find(p => p.id === pId);
+                if (!spPlayer) return;
+                const sp = speeches.find(s => s.playerId === pId || s.speakerId === pId);
+                if (!sp) return;
+                const pc = COLOR_PALETTE.find(c => c.id === spPlayer.colorId) || COLOR_PALETTE[0];
+                const isMe = (pId === myOnlinePlayerId);
+                const cleanText = (sp.text || '').trim();
+
+                const row = document.createElement('div');
+                if (isMe) {
+                  row.className = "flex items-start justify-end space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+                  row.innerHTML = `
+                    <div class="p-2.5 rounded-xl text-xs max-w-[72%] sm:max-w-[75%] shadow-md break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text bg-amber-950/80 border border-amber-500/70 text-amber-200 text-left" style="overflow-wrap: anywhere; word-break: break-word;">${cleanText}</div>
+                    <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+                      <span class="text-xs font-bold text-amber-300 font-mono">(您) ${spPlayer.name}</span>
+                      <div style="background-color: ${pc.hex}; color: ${(pc.id === 'yellow' || pc.id === 'white' || pc.id === 'green') ? '#0a0a0a' : '#ffffff'};" class="w-7 h-7 rounded-full ${pc.bgClass} border border-amber-400 flex items-center justify-center font-black text-xs shadow">
+                        ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  row.className = "flex items-start justify-start space-x-2 py-1.5 w-full min-w-0 overflow-hidden";
+                  row.innerHTML = `
+                    <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+                      <div style="background-color: ${pc.hex}; color: ${(pc.id === 'yellow' || pc.id === 'white' || pc.id === 'green') ? '#0a0a0a' : '#ffffff'};" class="w-7 h-7 rounded-full ${pc.bgClass} border border-neutral-600 flex items-center justify-center font-black text-xs shadow">
+                        ${spPlayer.repChar || getRepresentativeChar(spPlayer.name)}
+                      </div>
+                      <span class="text-xs font-bold text-neutral-300 font-mono">${spPlayer.name}</span>
+                    </div>
+                    <div class="p-2.5 rounded-xl text-xs max-w-[72%] sm:max-w-[75%] shadow-md break-words break-all whitespace-pre-wrap min-w-0 speech-bubble-text bg-neutral-900 border border-neutral-800 text-neutral-100 text-left" style="overflow-wrap: anywhere; word-break: break-word;">${cleanText}</div>
+                  `;
+                }
+                roundCard.appendChild(row);
+              });
+            }
+          }
           speechContainer.appendChild(roundCard);
         });
         if (speechContainer.children.length === 0) {
@@ -8086,15 +8146,16 @@ ${gData.hasMockPlayers ? '<span class="text-amber-400 font-bold bg-amber-950/60 
 
  const totalVotes = res && res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
 
+ // 修改2：三回合投票保留之獸首真偽揭曉：設定自動換行 (flex-wrap)，票數過多時自動向下換行不超出格子
  bListHtml += `
- <div class="flex justify-between items-center py-1.5 px-2.5 rounded bg-neutral-900/70 border border-neutral-800 text-xs">
- <div class="flex items-center">
+ <div class="flex justify-between items-center py-2 px-2.5 rounded bg-neutral-900/70 border border-neutral-800 text-xs w-full min-w-0">
+ <div class="flex items-center flex-wrap gap-1 flex-1 min-w-0 mr-2">
  ${badge}
- <span class="font-bold text-neutral-100 text-sm mr-2">${b.name}</span>
- <span class="text-[11px] text-neutral-400 mr-2 font-mono">(${totalVotes} 票)</span>
- <div class="flex items-center space-x-0.5">${rects}</div>
+ <span class="font-bold text-neutral-100 text-sm mr-1 flex-shrink-0">${b.name}</span>
+ <span class="text-[11px] text-neutral-400 mr-1.5 font-mono flex-shrink-0">(${totalVotes} 票)</span>
+ <div class="flex items-center flex-wrap gap-1 my-0.5 max-w-full">${rects}</div>
  </div>
- <div class="font-black ${b.isReal ? 'text-emerald-400' : 'text-rose-400'}">${b.isReal ? '【真品】' : '【贗品】'}</div>
+ <div class="font-black flex-shrink-0 text-sm pl-1 ${b.isReal ? 'text-emerald-400' : 'text-rose-400'}">${b.isReal ? '【真品】' : '【贗品】'}</div>
  </div>
  `;
  });
