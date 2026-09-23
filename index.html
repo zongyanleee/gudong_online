@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v1.4.37)</title>  
+ <title>古董局中局 (v1.4.40)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -1229,7 +1229,7 @@
   
  <!-- 版本、免責文字與視覺風格微調 -->  
  <div class="text-[11px] text-neutral-500 leading-relaxed pt-1 space-y-2">  
- <div class="font-mono text-neutral-400 font-bold">版本 1.4.37</div>  
+ <div class="font-mono text-neutral-400 font-bold">版本 1.4.40</div>  
  <div>該程式為粉絲製作的古董局中局桌遊助手程式，不代表官方立場</div>  
   
 </div>  
@@ -2506,7 +2506,16 @@ service cloud.firestore {
     return `GudongOnlineGame/room_${c}`;  
   }  
   
-  let ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);  
+  let ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);
+
+  function getRoomHostId(room) {
+    if (!room) return null;
+    if (room.hostId) return room.hostId;
+    const firstHuman = (room.players || []).find(p => p.id && !p.id.startsWith('mock_p_'));
+    return firstHuman ? firstHuman.id : (room.players && room.players[0] ? room.players[0].id : null);
+  }
+  window.getRoomHostId = getRoomHostId;
+  
  let myOnlinePlayerId = null;  
  let myOnlinePlayerName = "";  
  let onlineRoomData = null;  
@@ -2543,7 +2552,7 @@ service cloud.firestore {
   }  
   
   function scrollToTopPersonVoting() {  
-    // 鑑人階段畫面自動上滑至頂，供玩家方便點選人選  
+    // 鑑人階段畫面自動上滑至頂一次而已，供玩家方便點選人選  
     try {  
       window.scrollTo(0, 0);  
       document.documentElement.scrollTop = 0;  
@@ -2561,13 +2570,6 @@ service cloud.firestore {
         }  
       } catch(e) {}  
     }, 80);  
-    setTimeout(() => {  
-      try {  
-        window.scrollTo(0, 0);  
-        document.documentElement.scrollTop = 0;  
-        document.body.scrollTop = 0;  
-      } catch(e) {}  
-    }, 250);  
   }  
   window.scrollToTopPersonVoting = scrollToTopPersonVoting;  
  let onlTempLaoActive = false;  
@@ -2762,19 +2764,24 @@ service cloud.firestore {
  if (snap.exists) {  
  const data = snap.data();  
  let players = data.players || [];  
- if (preservePlayers) {  
- players = players.map(p => ({  
- ...p,  
- readyToStart: false,  
- role: '',  
- roleConfirmed: false,  
- isAmbushed: false,  
- isPermanentlyAmbushed: false,  
- inspectHistory: [],  
- abilityHistory: [],  
- confusedRound: null  
- }));  
- } else {  
+       if (preservePlayers) {  
+        players = players.map(p => {  
+          const isMock = !!(p.id && p.id.startsWith('mock_p_'));  
+          return {  
+            ...p,  
+            readyToStart: isMock,  
+            isReady: isMock,  
+            role: '',  
+            roleConfirmed: isMock,  
+            hasConfirmedRole: isMock,  
+            isAmbushed: false,  
+            isPermanentlyAmbushed: false,  
+            inspectHistory: [],  
+            abilityHistory: [],  
+            confusedRound: null  
+          };  
+        });  
+      } else {  
  players = [];  
  }  
   
@@ -2936,16 +2943,13 @@ service cloud.firestore {
  'onlSecPersonVoting',  
  'onlSecGameOver'  
  ];  
- views.forEach(id => {  
+   views.forEach(id => {  
     const el = document.getElementById(id);  
     if (el) {  
       if (id === sectionId) el.classList.remove('hidden');  
       else el.classList.add('hidden');  
     }  
   });  
-  if (sectionId === 'onlSecPersonVoting') {  
-    scrollToTopPersonVoting();  
-  }  
 }  
   
  function joinOnlineRoom() {  
@@ -3335,25 +3339,28 @@ service cloud.firestore {
  // 4. 【無房主世代計數器】(Session Epoch / Generation Counter)  
  // 全員已同意重開局：原子推進至下一個世代，徹底乾淨抹除舊局資料，保證新局 100% 啟動  
  if (readyCount >= totalCount && totalCount > 0) {  
- const updatedPlayers = players.map((p, idx) => ({  
- id: p.id,  
- name: p.name,  
- repChar: p.repChar || getRepresentativeChar(p.name),  
- colorId: p.colorId,  
- seatIndex: (p.seatIndex !== undefined && p.seatIndex !== null) ? p.seatIndex : idx,  
- readyToStart: false,  
- isReady: false,  
- readySession: targetSession,  
- role: '',  
- roleConfirmed: false,  
- hasConfirmedRole: false,  
- actionState: null,  
- isAmbushed: false,  
- isPermanentlyAmbushed: false,  
- inspectHistory: [],  
- abilityHistory: [],  
- confusedRound: null  
- }));  
+         const updatedPlayers = players.map((p, idx) => {  
+          const isMock = !!(p.id && p.id.startsWith('mock_p_'));  
+          return {  
+            id: p.id,  
+            name: p.name,  
+            repChar: p.repChar || getRepresentativeChar(p.name),  
+            colorId: p.colorId,  
+            seatIndex: (p.seatIndex !== undefined && p.seatIndex !== null) ? p.seatIndex : idx,  
+            readyToStart: isMock,  
+            isReady: isMock,  
+            readySession: targetSession,  
+            role: '',  
+            roleConfirmed: isMock,  
+            hasConfirmedRole: isMock,  
+            actionState: null,  
+            isAmbushed: false,  
+            isPermanentlyAmbushed: false,  
+            inspectHistory: [],  
+            abilityHistory: [],  
+            confusedRound: null  
+          };  
+        });  
   
  const cleanRoomData = {  
  roomId: data.roomId || currentOnlineRoomCode || "8888",  
@@ -3942,11 +3949,32 @@ onlineRoomData = room;
  if (overlay) overlay.classList.add('hidden');  
  }  
   
- // 依 room.status 派發視圖  
- if (room.status === 'waiting' || room.status === 'WAITING_READY') {  
- // 需求1：客戶端反應式監聽重置 (Reactive Listener & Local State Purge)  
- // 偵測到 status 轉為初始化，自動清空組件內部快取與鎖定，無須手動按 F5 即可重新掛載就緒視圖  
- window._isDealingRoles = false;  
+       // 依 room.status 派發視圖  
+      if (room.status === 'waiting' || room.status === 'WAITING_READY') {  
+        // 關鍵確保：若房間有舊的電腦虛擬玩家，無論如何自動保持就緒狀態！  
+        if (Array.isArray(room.players)) {  
+          let hasUnreadyMock = false;  
+          room.players.forEach(p => {  
+            if (p.id && p.id.startsWith('mock_p_')) {  
+              if (!p.readyToStart || !p.isReady || !p.roleConfirmed) {  
+                p.readyToStart = true;  
+                p.isReady = true;  
+                p.roleConfirmed = true;  
+                hasUnreadyMock = true;  
+              }  
+            }  
+          });  
+          if (hasUnreadyMock && isFirebaseReady && db) {  
+            const hostId = getRoomHostId(room);  
+            if (hostId === myOnlinePlayerId) {  
+              db.doc(ONLINE_ROOM_DOC).update({ players: room.players, lastActivityTime: Date.now() }).catch(e => {});  
+            }  
+          }  
+        }  
+
+        // 需求1：客戶端反應式監聽重置 (Reactive Listener & Local State Purge)  
+        // 偵測到 status 轉為初始化，自動清空組件內部快取與鎖定，無須手動按 F5 即可重新掛載就緒視圖  
+        window._isDealingRoles = false;  
  _lobbyCountdownPendingStart = false;  
  if (_lobbyCountdownTimer) {  
  clearInterval(_lobbyCountdownTimer);  
@@ -3971,21 +3999,26 @@ onlineRoomData = room;
  showToast('🔔 輪到您的回合，請查驗獸首！', 'success', 2500);  
  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);  
  }  
- } else if (room.status === 'discussion' || room.status === 'voting') {  
- // 需求 1：發言階段若輪到虛擬玩家，房主客戶端立即驅動打字發言，避免卡在虛擬角色  
- if (room.status === 'discussion' && room.currentSpeakerId && room.currentSpeakerId.startsWith('mock_p_')) {  
- triggerMockPlayerSpeech(room, room.currentSpeakerId);  
- }  
- // 依要求7：若輪到該玩家發言，頁面自動移到最上方  
- if (room.status === 'discussion' && room.currentSpeakerId === myOnlinePlayerId && window._lastScrolledSpeechId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {  
- window._lastScrolledSpeechId = myOnlinePlayerId + '_' + room.currentRoundIdx;  
- setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);  
- }  
- showOnlineSubView('onlSecDiscussionVoting');  
- renderOnlineDiscussionView(room, me);  
- renderOnlineVotingView(room, me);  
- if (room.status === 'voting') { autoScrollToVotingStageIfNeeded(room); }  
- } else if (room.status === 'person_voting') {  
+       } else if (room.status === 'discussion' || room.status === 'voting') {  
+        // 依要求7：若輪到該玩家發言，頁面自動移到最上方  
+        if (room.status === 'discussion' && room.currentSpeakerId === myOnlinePlayerId && window._lastScrolledSpeechId !== (myOnlinePlayerId + '_' + room.currentRoundIdx)) {  
+          window._lastScrolledSpeechId = myOnlinePlayerId + '_' + room.currentRoundIdx;  
+          setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);  
+        }  
+        showOnlineSubView('onlSecDiscussionVoting');  
+        renderOnlineDiscussionView(room, me);  
+        renderOnlineVotingView(room, me);  
+        if (room.status === 'voting') { autoScrollToVotingStageIfNeeded(room); }  
+
+        // 需求 1：發言階段若輪到虛擬玩家，房主客戶端立即驅動打字發言，避免卡在虛擬角色  
+        if (room.status === 'discussion' && room.currentSpeakerId && room.currentSpeakerId.startsWith('mock_p_')) {  
+          try {
+            triggerMockPlayerSpeech(room, room.currentSpeakerId);  
+          } catch(err) {
+            console.error('triggerMockPlayerSpeech 異常:', err);
+          }
+        }  
+      } else if (room.status === 'person_voting') {  
  showOnlineSubView('onlSecPersonVoting');  
  renderOnlinePersonVotingView(room, me);  
  autoScrollToTopForPersonVoting();  
@@ -4236,14 +4269,21 @@ async function kickOnlinePlayer(targetId, event) {
  // 8 色搶色條  
  renderOnlineColorPicker(room, me);  
   
- // 開始按鈕控制：隨時可用，滿 8 人且全員就緒時，按鈕變成「直接開局」金鍵！點擊立刻開局！  
- const startSec = document.getElementById('onlStartGameSection');  
- const startBtn = document.getElementById('btnOnlReadyStart');  
- const waitingNotice = document.getElementById('onlWaitingNotice');  
+   // 開始按鈕控制：隨時可用，滿 8 人且全員就緒時，按鈕變成「直接開局」金鍵！點擊立刻開局！  
+  const startSec = document.getElementById('onlStartGameSection');  
+  const startBtn = document.getElementById('btnOnlReadyStart');  
+  const waitingNotice = document.getElementById('onlWaitingNotice');  
   
- const readyCount = players.filter(p => p.readyToStart).length;  
- const isAllReady = (players.length === 8 && readyCount === 8);  
- const isMyReady = me ? me.readyToStart : false;  
+  // 確保電腦虛擬玩家在繪製座位圓圖與計算人數時一律為就緒狀態  
+  players.forEach(p => {  
+    if (p.id && p.id.startsWith('mock_p_')) {  
+      p.readyToStart = true;  
+      p.isReady = true;  
+    }  
+  });  
+  const readyCount = players.filter(p => p.readyToStart).length;  
+  const isAllReady = (players.length === 8 && readyCount === 8);  
+  const isMyReady = me ? me.readyToStart : false;  
   
  if (startSec) startSec.classList.remove('hidden');  
   
@@ -4468,17 +4508,25 @@ async function kickOnlinePlayer(targetId, event) {
  let me = players.find(p => p.id === myOnlinePlayerId);  
  if (!me) return;  
   
- // 1. 本地樂觀立即切換狀態與畫面 (零延遲！)  
- me.readyToStart = !me.readyToStart;  
- renderOnlineLobby(room, me);  
+   // 1. 本地樂觀立即切換狀態與畫面 (零延遲！)  
+  me.readyToStart = !me.readyToStart;  
+  me.isReady = me.readyToStart;  
+  players.forEach(p => {  
+    if (p.id && p.id.startsWith('mock_p_')) {  
+      p.readyToStart = true;  
+      p.isReady = true;  
+      p.roleConfirmed = true;  
+    }  
+  });  
+  renderOnlineLobby(room, me);  
   
- // 2. 快速非阻塞寫入資料庫  
- const docRef = db.doc(ONLINE_ROOM_DOC);  
- try {  
- await docRef.update({ players: players });  
- } catch(e) {  
- console.error('更新就緒狀態失敗:', e);  
- }  
+  // 2. 快速非阻塞寫入資料庫  
+  const docRef = db.doc(ONLINE_ROOM_DOC);  
+  try {  
+    await docRef.update({ players: players });  
+  } catch(e) {  
+    console.error('更新就緒狀態失敗:', e);  
+  }  
  }  
  window.toggleMyReadyStart = toggleMyReadyStart;  
   
@@ -5194,7 +5242,7 @@ async function kickOnlinePlayer(targetId, event) {
  ].filter(Boolean));  
   
  let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';  
- const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
+ const sortedChipsBeasts = [...(r.beasts || [])].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
  sortedChipsBeasts.forEach(b => {  
  const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;  
  const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];  
@@ -6456,7 +6504,7 @@ async function onlConfirmPassNextPlayer() {
  ].filter(Boolean));  
   
  let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';  
- const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
+ const sortedChipsBeasts = [...(r.beasts || [])].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
  sortedChipsBeasts.forEach(b => {  
  const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;  
  const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];  
@@ -7313,26 +7361,30 @@ container.appendChild(row);
  } else {  
  // 其他玩家：隱藏按鈕，顯示等待首家提示  
  if (advBtn) advBtn.classList.add('hidden');  
- if (nextNoticeEl) {  
- nextNoticeEl.classList.remove('hidden');  
- const starterName = nextStarter ? nextStarter.name : '下輪首家';  
- const pc = nextStarter ? (COLOR_PALETTE.find(c => c.id === nextStarter.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];  
- const targetStageText = (curRoundIdx < 2) ? `第 ${curRoundIdx + 2} 回合` : '鑑人投票階段';  
- nextNoticeEl.innerHTML = `⏳ 投票已揭曉！等待首家 <span class="${pc.bgClass} px-1.5 py-0.5 rounded text-[11px] font-black">${pc.name}色 ${starterName}</span> 點擊開啟【${targetStageText}】...`;  
- }  
- }  
+             if (nextNoticeEl) {  
+              nextNoticeEl.classList.remove('hidden');  
+              const starterName = nextStarter ? nextStarter.name : '下輪首家';  
+              const pc = nextStarter ? (COLOR_PALETTE.find(c => c.id === nextStarter.colorId) || COLOR_PALETTE[0]) : COLOR_PALETTE[0];  
+              const targetStageText = (curRoundIdx < 2) ? `第 ${curRoundIdx + 2} 回合` : '鑑人投票階段';  
+              if (nextStarterId && nextStarterId.startsWith('mock_p_')) {
+                nextNoticeEl.innerHTML = `🤖 首家電腦玩家 <span class="${pc.bgClass} px-1.5 py-0.5 rounded text-[11px] font-black">${pc.name}色 ${starterName}</span> 正在開啟【${targetStageText}】...`;
+              } else {
+                nextNoticeEl.innerHTML = `⏳ 投票已揭曉！等待首家 <span class="${pc.bgClass} px-1.5 py-0.5 rounded text-[11px] font-black">${pc.name}色 ${starterName}</span> 點擊開啟【${targetStageText}】...`;
+              }
+            }  
+          }  
   
- // 若下回合首家為電腦玩家 (AI)，房主或看門狗自動於 2.5 秒後協助推進  
- if (nextStarterId && nextStarterId.startsWith('mock_p_')) {  
- const hostId = (room && room.hostId) ? room.hostId : getRoomHostId(room);  
- const isHost = (hostId === myOnlinePlayerId);  
- if (isHost && !window._autoAdvanceBotRoundTimer) {  
- window._autoAdvanceBotRoundTimer = setTimeout(async () => {  
- window._autoAdvanceBotRoundTimer = null;  
- await onlAdvanceNextRoundOrPersonVote();  
- }, 2500);  
- }  
- }  
+          // 若下回合首家為電腦玩家 (AI)，房主或看門狗自動於 2 秒後協助推進 (進入下回合或鑑人)  
+          if (nextStarterId && nextStarterId.startsWith('mock_p_')) {  
+            const hostId = getRoomHostId(room);  
+            const isHost = (hostId === myOnlinePlayerId);  
+            if (isHost && !window._autoAdvanceBotRoundTimer) {  
+              window._autoAdvanceBotRoundTimer = setTimeout(async () => {  
+                window._autoAdvanceBotRoundTimer = null;  
+                await onlAdvanceNextRoundOrPersonVote();  
+              }, 2000);  
+            }  
+          }  
  }  
  } else {  
  const wrapper = document.getElementById('onlAdvanceRoundBtnWrapper');  
@@ -7663,7 +7715,7 @@ container.appendChild(row);
  ].filter(Boolean));  
   
  let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';  
- const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
+ const sortedChipsBeasts = [...(r.beasts || [])].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));  
  sortedChipsBeasts.forEach(b => {  
  const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;  
  const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];  
@@ -7888,7 +7940,6 @@ container.appendChild(row);
  } else {  
         // 三回合鑑寶結束・進入鑑人投票  
         _hasAutoScrolledPersonVoting = false;  
-        scrollToTopPersonVoting();  
         await db.doc(ONLINE_ROOM_DOC).update({  
           status: 'person_voting',  
           personVotes: {}  
@@ -8032,8 +8083,9 @@ container.appendChild(row);
       const xuPlayer = room.players.find(p => p.role === '許願');
 
       let laoCaught = false;
+      let votesForLao = 0;
       if (laoPlayer) {
-        const votesForLao = goodPlayers.filter(p => room.personVotes[p.id] === laoPlayer.id).length;
+        votesForLao = goodPlayers.filter(p => room.personVotes && room.personVotes[p.id] === laoPlayer.id).length;
         laoCaught = votesForLao > (goodPlayers.length / 2);
         if (laoCaught) totalScore += 1;
       }
@@ -8060,6 +8112,8 @@ container.appendChild(row);
         winningCamp: winningCampName,
         savedBeastsCount: realSavedCount,
         laoCaught: laoCaught,
+        votesForLao: votesForLao,
+        goodPlayerCount: goodPlayers.length,
         fangCaught: fangCaught,
         xuCaught: xuCaught,
         durationMinutes: Math.max(1, elapsed)
@@ -8125,9 +8179,24 @@ container.appendChild(row);
           <div class="font-bold text-neutral-200 text-sm">• 鑒寶環節共得到 <span class="text-blue-400 font-black text-base">${gData.savedBeastsCount || 0}分</span></div>
         </div>
       `;
+      const goodRoles = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'];
+      const goodPlayers = (room.players || []).filter(p => goodRoles.includes(p.role));
+      const laoPlayer = (room.players || []).find(p => p.role === '老朝奉');
+      const pVotes = room.personVotes || {};
+      const votesForLao = (gData.votesForLao !== undefined)
+        ? gData.votesForLao
+        : (laoPlayer ? goodPlayers.filter(p => pVotes[p.id] === laoPlayer.id).length : 0);
+      const totalGoodCount = (gData.goodPlayerCount !== undefined)
+        ? gData.goodPlayerCount
+        : (goodPlayers.length || 5);
+
+      const laoTitle = gData.laoCaught
+        ? `老朝奉被找到 (${votesForLao}/${totalGoodCount})`
+        : `老朝奉沒有被找到 (${votesForLao}/${totalGoodCount})`;
+
       scoreDetailsHtml += `
         <div class="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800/80">
-          <div class="font-bold text-neutral-200 text-sm">• ${gData.laoCaught ? '老朝奉被找到' : '老朝奉沒有被找到'}</div>
+          <div class="font-bold text-neutral-200 text-sm">• ${laoTitle}</div>
           <div class="text-xs text-neutral-400 mt-0.5 pl-3.5">許願方陣營加<span class="${gData.laoCaught ? 'text-blue-400 font-black' : 'text-red-500 font-bold'} text-sm">${gData.laoCaught ? '1分' : '0分'}</span></div>
         </div>
       `;
@@ -8172,29 +8241,31 @@ container.appendChild(row);
         const res = r.voteResults;
         let bListHtml = '';
         (r.beasts || []).forEach(b => {
-          let badge = '<span class="text-[10px] bg-neutral-900 text-neutral-400 border border-neutral-800 px-1.5 py-0.5 rounded mr-1.5">未入選</span>';
-          if (res && res.rank1 && res.rank1.name === b.name) badge = '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-600/50 px-1.5 py-0.5 rounded font-bold mr-1.5">🥇 第一名封存</span>';
-          else if (res && res.rank2 && res.rank2.name === b.name) badge = '<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600/50 px-1.5 py-0.5 rounded font-bold mr-1.5">🥈 第二名公開</span>';
+          let badge = '<span class="text-[10px] bg-neutral-900 text-neutral-400 border border-neutral-800 px-1.5 py-0.5 rounded mr-1.5 flex-shrink-0 whitespace-nowrap inline-flex items-center">未入選</span>';
+          if (res && res.rank1 && res.rank1.name === b.name) badge = '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-600/50 px-1.5 py-0.5 rounded font-bold mr-1.5 flex-shrink-0 whitespace-nowrap inline-flex items-center">🥇 第一名封存</span>';
+          else if (res && res.rank2 && res.rank2.name === b.name) badge = '<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600/50 px-1.5 py-0.5 rounded font-bold mr-1.5 flex-shrink-0 whitespace-nowrap inline-flex items-center">🥈 第二名公開</span>';
 
           const chips = (res && res.beastChips && res.beastChips[b.name]) ? res.beastChips[b.name] : [];
           let rects = '';
           chips.forEach(ch => {
             const isBlack = (ch.colorId === 'black' || ch.bgClass.includes('bg-black'));
             const bStyle = isBlack ? 'border border-dotted border-white shadow-xs bg-black' : `border border-black shadow-xs ${ch.bgClass}`;
-            rects += `<span class="w-3.5 h-2 rounded-xs inline-block ${bStyle}"></span> `;
+            rects += `<span class="w-3.5 h-2 rounded-xs inline-block flex-shrink-0 ${bStyle}" title="${ch.voterName || ''}"></span>`;
           });
 
           const totalVotes = res && res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
 
           bListHtml += `
-            <div class="flex justify-between items-center py-1.5 px-2.5 rounded bg-neutral-900/70 border border-neutral-800 text-xs">
-              <div class="flex items-center">
-                ${badge}
-                <span class="font-bold text-neutral-100 text-sm mr-2">${b.name}</span>
-                <span class="text-[11px] text-neutral-400 mr-2 font-mono">(${totalVotes} 票)</span>
-                <div class="flex items-center space-x-0.5">${rects}</div>
+            <div class="flex justify-between items-center py-2 px-2.5 rounded bg-neutral-900/70 border border-neutral-800 text-xs min-w-0 gap-2">
+              <div class="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex items-center flex-shrink-0 whitespace-nowrap mr-1">
+                  ${badge}
+                  <span class="font-bold text-neutral-100 text-sm mr-1 flex-shrink-0">${b.name}</span>
+                  <span class="text-[11px] text-neutral-400 font-mono flex-shrink-0">(${totalVotes} 票)</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-0.5 min-w-0 max-w-full my-0.5">${rects}</div>
               </div>
-              <div class="font-black ${b.isReal ? 'text-emerald-400' : 'text-rose-400'}">${b.isReal ? '【真品】' : '【贗品】'}</div>
+              <div class="font-black flex-shrink-0 whitespace-nowrap ml-2 ${b.isReal ? 'text-emerald-400' : 'text-rose-400'}">${b.isReal ? '【真品】' : '【贗品】'}</div>
             </div>
           `;
         });
@@ -8212,7 +8283,6 @@ container.appendChild(row);
 
       // 鑑人投票明細 (顏色分區，同小幫手)
       const pDiv = document.getElementById('onlPersonVoteSummary');
-      const goodRoles = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'];
       const goodGroup = room.players.filter(p => goodRoles.includes(p.role));
       const evilLeaders = room.players.filter(p => ['老朝奉', '藥不然'].includes(p.role));
       const zhengList = room.players.filter(p => p.role === '鄭國渠');
@@ -8489,6 +8559,29 @@ container.appendChild(row);
     }
     window.renderDiscussionCircleSeats = renderDiscussionCircleSeats;
 
+    
+  let onlPersonRefCollapsedSpeeches = {};
+  function togglePersonRefSpeechCollapse(rNum) {
+    if (onlPersonRefCollapsedSpeeches[rNum] === undefined) {
+      onlPersonRefCollapsedSpeeches[rNum] = true;
+    }
+    onlPersonRefCollapsedSpeeches[rNum] = !onlPersonRefCollapsedSpeeches[rNum];
+    const body = document.getElementById(`onlPersonRefSpeechBody_${rNum}`);
+    const toggleBtn = document.getElementById(`onlPersonRefSpeechToggle_${rNum}`);
+    if (body && toggleBtn) {
+      if (onlPersonRefCollapsedSpeeches[rNum]) {
+        body.classList.add('hidden');
+        toggleBtn.innerText = '▶ 點擊展開';
+      } else {
+        body.classList.remove('hidden');
+        toggleBtn.innerText = '▼ 點擊收合';
+      }
+    } else {
+      renderOnlinePersonVotingReference(onlineRoomData);
+    }
+  }
+  window.togglePersonRefSpeechCollapse = togglePersonRefSpeechCollapse;
+
     function renderOnlinePersonVotingReference(room) {
       const refSection = document.getElementById('onlPersonReferenceSection');
       if (!refSection || !room) return;
@@ -8513,7 +8606,7 @@ container.appendChild(row);
           ].filter(Boolean));
 
           let beastsGridHtml = '<div class="grid grid-cols-4 gap-2 text-center">';
-          const sortedChipsBeasts = [...r.beasts].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
+          const sortedChipsBeasts = [...(r.beasts || [])].sort((a, b) => ZODIAC_ORDER.indexOf(a.name) - ZODIAC_ORDER.indexOf(b.name));
           sortedChipsBeasts.forEach(b => {
             const totalVotes = res.beastTotals ? (res.beastTotals[b.name] || 0) : 0;
             const chips = res.beastChips ? (res.beastChips[b.name] || []) : [];
@@ -8600,7 +8693,7 @@ container.appendChild(row);
         });
       }
 
-      // 3. 各回合發言欄紀錄：與遊戲中完全一致 (依序展示對話氣泡、頭像與陳述)
+      // 3. 各回合發言欄紀錄：可折疊版本 (跟操作中的頁面完全一致)
       if (refSpeech) {
         refSpeech.innerHTML = '';
         [1, 2, 3].forEach(rNum => {
@@ -8608,8 +8701,13 @@ container.appendChild(row);
           const speeches = rObj ? (rObj.speeches || []) : [];
           if (speeches.length === 0) return;
 
+          if (onlPersonRefCollapsedSpeeches[rNum] === undefined) {
+            onlPersonRefCollapsedSpeeches[rNum] = true; // 預設收合，保持版面清爽
+          }
+          const isCollapsed = !!onlPersonRefCollapsedSpeeches[rNum];
+
           const roundBox = document.createElement('div');
-          roundBox.className = 'p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2';
+          roundBox.className = 'p-2.5 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-1.5';
 
           let listHtml = '';
           speeches.forEach(sp => {
@@ -8637,10 +8735,11 @@ container.appendChild(row);
           });
 
           roundBox.innerHTML = `
-            <div class="text-xs font-bold text-amber-400 border-b border-neutral-800 pb-1.5 flex items-center justify-between">
-              <span>📜 第 ${rNum} 回合發言紀錄 (${speeches.length}則)</span>
+            <div onclick="togglePersonRefSpeechCollapse(${rNum})" class="py-1.5 px-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-[11px] font-bold flex justify-between items-center cursor-pointer transition hover:border-amber-500/50 select-none">
+              <span class="text-neutral-300">📜 第 ${rNum} 回合發言紀錄 (${speeches.length}則)</span>
+              <span id="onlPersonRefSpeechToggle_${rNum}" class="font-mono text-amber-400 text-[10px]">${isCollapsed ? '▶ 點擊展開' : '▼ 點擊收合'}</span>
             </div>
-            <div class="space-y-1.5 max-h-60 overflow-y-auto pt-1">
+            <div id="onlPersonRefSpeechBody_${rNum}" class="space-y-1.5 max-h-60 overflow-y-auto pt-1 ${isCollapsed ? 'hidden' : ''}">
               ${listHtml}
             </div>
           `;
@@ -8698,6 +8797,25 @@ container.appendChild(row);
         if (unvotedMock) {
           await executeMockPersonVoteStep(room, unvotedMock.id);
           return;
+        }
+      }
+
+      // 5. 個人鑑寶投票揭曉完畢：若下輪首家為電腦玩家，自動協助推進開啟下一回合或前往鑑人
+      if (room.status === 'voting') {
+        const curRoundObj = room.rounds ? room.rounds[curRoundIdx] : null;
+        if (curRoundObj && curRoundObj.voteResults) {
+          const passOrder = curRoundObj.passOrder || [];
+          const nextStarterId = passOrder.length > 0 ? passOrder[passOrder.length - 1] : (room.players && room.players[0] ? room.players[0].id : null);
+          if (nextStarterId && nextStarterId.startsWith('mock_p_') && !window._autoAdvanceBotRoundTimer) {
+            _mockActionPending = true;
+            _lastMockActionTime = now;
+            window._autoAdvanceBotRoundTimer = setTimeout(async () => {
+              window._autoAdvanceBotRoundTimer = null;
+              _mockActionPending = false;
+              await onlAdvanceNextRoundOrPersonVote();
+            }, 2000);
+            return;
+          }
         }
       }
     }, 1500);
