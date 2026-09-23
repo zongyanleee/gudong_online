@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v1.4.36)</title>  
+ <title>古董局中局 (v1.4.37)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -263,7 +263,7 @@
   
  <div class="space-y-2 text-left pt-2">  
  <label class="block text-xs font-bold text-neutral-300">請輸入您的遊玩暱稱：</label>  
- <input type="text" id="onlInputNickname" maxlength="10" placeholder="例如：宗彥、小菜、JEO..." class="w-full text-base font-bold bg-neutral-950 border border-neutral-700 focus:border-amber-500 rounded-xl px-3.5 py-3 text-neutral-100 outline-none">  
+ <input type="text" id="onlInputNickname" maxlength="10" placeholder="請輸入您的遊玩暱稱" oninput="saveOnlineNickname(this.value)" onchange="saveOnlineNickname(this.value)" class="w-full text-base font-bold bg-neutral-950 border border-neutral-700 focus:border-amber-500 rounded-xl px-3.5 py-3 text-neutral-100 outline-none">  
    
 </div>  
   
@@ -271,13 +271,10 @@
  <div class="space-y-2 text-left pt-1">  
  <div class="flex justify-between items-center">  
  <label class="block text-xs font-bold text-neutral-300">線上四位數房號：</label>  
- <div class="space-x-2 text-[11px]">  
- <button type="button" onclick="setRoomCode('8888')" class="text-neutral-400 hover:text-amber-300 underline">預設 8888</button>  
- <button type="button" onclick="generateRandomRoomCode()" class="text-amber-400 hover:text-amber-300 underline font-bold">🎲 隨機房號</button>  
- </div>  
+ <div class="space-x-2 text-[11px]"><button type="button" onclick="generateRandomRoomCode()" class="text-amber-400 hover:text-amber-300 underline font-bold">🎲 換一組隨機房號</button></div>  
  </div>  
  <div class="relative">  
- <input type="text" id="onlInputRoomCode" maxlength="4" placeholder="8888" value="8888" class="w-full text-center text-xl font-mono font-black tracking-widest bg-neutral-950 border border-neutral-700 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-amber-300 outline-none shadow-inner">  
+ <input type="text" id="onlInputRoomCode" maxlength="4" placeholder="請輸入4位數房號" value="" class="w-full text-center text-xl font-mono font-black tracking-widest bg-neutral-950 border border-neutral-700 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-amber-300 outline-none shadow-inner">  
  </div>  
  <p class="text-[10px] text-neutral-400 leading-relaxed">※ 輸入相同 4 位數房號即可同房遊玩！不同房號為獨立對局，同一台電腦開多個分頁也不會互相影響！</p>  
  </div>  
@@ -296,7 +293,7 @@
  <div class="flex justify-between items-center border-b border-neutral-800 pb-2.5">  
  <div class="flex items-center space-x-2">  
  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>  
- <span class="text-xs font-black text-neutral-200">線上房間：<b id="onlLobbyRoomCodeBadge" class="text-amber-400 font-mono tracking-widest text-sm">8888</b></span>  
+ <span class="text-xs font-black text-neutral-200">線上房間：<b id="onlLobbyRoomCodeBadge" class="text-amber-400 font-mono tracking-widest text-sm">----</b></span>  
  </div>  
  <span id="onlLobbyPlayerCountBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">0 / 8 人在線</span>  
  </div>  
@@ -1232,7 +1229,7 @@
   
  <!-- 版本、免責文字與視覺風格微調 -->  
  <div class="text-[11px] text-neutral-500 leading-relaxed pt-1 space-y-2">  
- <div class="font-mono text-neutral-400 font-bold">版本 1.4.36</div>  
+ <div class="font-mono text-neutral-400 font-bold">版本 1.4.37</div>  
  <div>該程式為粉絲製作的古董局中局桌遊助手程式，不代表官方立場</div>  
   
 </div>  
@@ -2479,21 +2476,37 @@ service cloud.firestore {
  }  
  window.updateTurnStepperUI = updateTurnStepperUI;  
   
- let currentOnlineRoomCode = "8888";  
+ function getRandom4DigitRoomCode() {  
+    return String(Math.floor(1000 + Math.random() * 9000));  
+  }  
+  window.getRandom4DigitRoomCode = getRandom4DigitRoomCode;
+
+  function saveOnlineNickname(val) {
+    const v = (val || '').trim();
+    if (v) {
+      myOnlinePlayerName = v;
+      try {
+        localStorage.setItem('gudong_online_my_name', v);
+      } catch(e) {}
+    }
+  }
+  window.saveOnlineNickname = saveOnlineNickname;
   
- function getOnlineRoomDoc(code) {  
- let c = (code || currentOnlineRoomCode || "8888").toString().replace(/\D/g, "");  
- if (!c) c = "8888";  
- c = c.padStart(4, "0").slice(-4);  
- currentOnlineRoomCode = c;  
- // 預設 8888 房間精確映射至 Firebase 唯一授權之 active_room，保證 100% 讀寫權限正常  
- if (c === "8888") {  
- return "GudongOnlineGame/active_room";  
- }  
- return `GudongOnlineGame/room_${c}`;  
- }  
   
- let ONLINE_ROOM_DOC = getOnlineRoomDoc("8888");  
+  let currentOnlineRoomCode = getRandom4DigitRoomCode();  
+  
+  function getOnlineRoomDoc(code) {  
+    let c = (code || currentOnlineRoomCode || getRandom4DigitRoomCode()).toString().replace(/\D/g, "");  
+    if (!c) c = getRandom4DigitRoomCode();  
+    c = c.padStart(4, "0").slice(-4);  
+    currentOnlineRoomCode = c;  
+    if (c === "8888") {  
+      return "GudongOnlineGame/active_room";  
+    }  
+    return `GudongOnlineGame/room_${c}`;  
+  }  
+  
+  let ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);  
  let myOnlinePlayerId = null;  
  let myOnlinePlayerName = "";  
  let onlineRoomData = null;  
@@ -2523,13 +2536,40 @@ service cloud.firestore {
  }  
   
  function autoScrollToTopForPersonVoting() {  
- if (!_hasAutoScrolledPersonVoting) {  
- _hasAutoScrolledPersonVoting = true;  
- setTimeout(() => {  
- window.scrollTo({ top: 0, behavior: 'smooth' });  
- }, 80);  
- }  
- }  
+    if (!_hasAutoScrolledPersonVoting) {  
+      _hasAutoScrolledPersonVoting = true;  
+      scrollToTopPersonVoting();  
+    }  
+  }  
+  
+  function scrollToTopPersonVoting() {  
+    // 鑑人階段畫面自動上滑至頂，供玩家方便點選人選  
+    try {  
+      window.scrollTo(0, 0);  
+      document.documentElement.scrollTop = 0;  
+      document.body.scrollTop = 0;  
+      window.scrollTo({ top: 0, behavior: 'smooth' });  
+    } catch(e) {}  
+    setTimeout(() => {  
+      try {  
+        window.scrollTo(0, 0);  
+        document.documentElement.scrollTop = 0;  
+        document.body.scrollTop = 0;  
+        const target = document.getElementById('onlPersonVotingCard') || document.getElementById('onlSecPersonVoting');  
+        if (target) {  
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });  
+        }  
+      } catch(e) {}  
+    }, 80);  
+    setTimeout(() => {  
+      try {  
+        window.scrollTo(0, 0);  
+        document.documentElement.scrollTop = 0;  
+        document.body.scrollTop = 0;  
+      } catch(e) {}  
+    }, 250);  
+  }  
+  window.scrollToTopPersonVoting = scrollToTopPersonVoting;  
  let onlTempLaoActive = false;  
  let onlTempZhengBlock = null;  
  let onlYaoTargetId = null;  
@@ -2545,27 +2585,37 @@ service cloud.firestore {
  let _lastSeenOnlineRound = null;  
   
  function resolveOnlineRoomDoc() {  
- try {  
- const savedCode = sessionStorage.getItem("gudong_online_room_code");  
- if (savedCode) {  
- return getOnlineRoomDoc(savedCode);  
- }  
- } catch(e) {}  
- return getOnlineRoomDoc(currentOnlineRoomCode || "8888");  
- }  
+    try {  
+      const savedCode = sessionStorage.getItem("gudong_online_room_code");  
+      if (savedCode && savedCode !== "8888") {  
+        return getOnlineRoomDoc(savedCode);  
+      }  
+    } catch(e) {}  
+    return getOnlineRoomDoc(currentOnlineRoomCode || getRandom4DigitRoomCode());  
+  }  
   
- function generateRandomRoomCode() {  
- const code = String(Math.floor(1000 + Math.random() * 9000));  
- const input = document.getElementById("onlInputRoomCode");  
- if (input) input.value = code;  
- }  
- window.generateRandomRoomCode = generateRandomRoomCode;  
+  function generateRandomRoomCode() {  
+    const code = getRandom4DigitRoomCode();  
+    currentOnlineRoomCode = code;  
+    try {  
+      sessionStorage.setItem("gudong_online_room_code", code);  
+    } catch(e) {}  
+    const input = document.getElementById("onlInputRoomCode");  
+    if (input) input.value = code;  
+  }  
+  window.generateRandomRoomCode = generateRandomRoomCode;  
   
- function setRoomCode(code) {  
- const input = document.getElementById("onlInputRoomCode");  
- if (input) input.value = code;  
- }  
- window.setRoomCode = setRoomCode;  
+  function setRoomCode(code) {  
+    const input = document.getElementById("onlInputRoomCode");  
+    if (input) input.value = code;  
+    if (code) {  
+      currentOnlineRoomCode = code;  
+      try {  
+        sessionStorage.setItem("gudong_online_room_code", code);  
+      } catch(e) {}  
+    }  
+  }  
+  window.setRoomCode = setRoomCode;  
   
 /* ============================================================  
  雙模式管理器：古董局中局小幫手 (單機) vs 線上版 Beta (8人連線)  
@@ -2582,19 +2632,25 @@ service cloud.firestore {
  } catch(e) {}  
   
  if (mode === 'online') {  
- ONLINE_ROOM_DOC = resolveOnlineRoomDoc();  
- applyAppModeView();  
- showOnlineSubView('onlSecNickname');  
- const input = document.getElementById('onlInputNickname');  
- if (input) {  
- input.value = myOnlinePlayerName || localStorage.getItem('gudong_online_my_name') || '';  
- setTimeout(() => input.focus(), 150);  
- }  
- const codeInput = document.getElementById('onlInputRoomCode');  
- if (codeInput) {  
- codeInput.value = currentOnlineRoomCode || '8888';  
- }  
- } else {  
+      ONLINE_ROOM_DOC = resolveOnlineRoomDoc();  
+      applyAppModeView();  
+      showOnlineSubView('onlSecNickname');  
+      const input = document.getElementById('onlInputNickname');  
+      if (input) {  
+        const rememberedName = localStorage.getItem('gudong_online_my_name') || myOnlinePlayerName || '';  
+        if (rememberedName) {  
+          input.value = rememberedName;  
+          myOnlinePlayerName = rememberedName;  
+        }  
+        setTimeout(() => input.focus(), 150);  
+      }  
+      const codeInput = document.getElementById('onlInputRoomCode');  
+      if (codeInput) {  
+        if (!codeInput.value || codeInput.value === '8888') {  
+          codeInput.value = currentOnlineRoomCode || getRandom4DigitRoomCode();  
+        }  
+      }  
+    } else {  
  applyAppModeView();  
  }  
  }  
@@ -2842,8 +2898,14 @@ service cloud.firestore {
  sessionStorage.setItem('gudong_online_my_id', myOnlinePlayerId);  
  }  
  myOnlinePlayerName = localStorage.getItem('gudong_online_my_name') || '';  
- currentOnlineRoomCode = sessionStorage.getItem('gudong_online_room_code') || '8888';  
- ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);  
+    const savedRoom = sessionStorage.getItem('gudong_online_room_code');  
+    if (savedRoom && savedRoom !== '8888') {  
+      currentOnlineRoomCode = savedRoom;  
+    } else {  
+      currentOnlineRoomCode = getRandom4DigitRoomCode();  
+      try { sessionStorage.setItem('gudong_online_room_code', currentOnlineRoomCode); } catch(e) {}  
+    }  
+    ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);  
  } catch(e) {  
  if (!myOnlinePlayerId) {  
  myOnlinePlayerId = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 100000);  
@@ -2859,9 +2921,9 @@ service cloud.firestore {
  setTimeout(() => input.focus(), 150);  
  }  
  const codeInput = document.getElementById('onlInputRoomCode');  
- if (codeInput) {  
- codeInput.value = currentOnlineRoomCode || '8888';  
- }  
+    if (codeInput) {  
+      codeInput.value = currentOnlineRoomCode || getRandom4DigitRoomCode();  
+    }  
  }  
   
  function showOnlineSubView(sectionId) {  
@@ -2875,13 +2937,16 @@ service cloud.firestore {
  'onlSecGameOver'  
  ];  
  views.forEach(id => {  
- const el = document.getElementById(id);  
- if (el) {  
- if (id === sectionId) el.classList.remove('hidden');  
- else el.classList.add('hidden');  
- }  
- });  
- }  
+    const el = document.getElementById(id);  
+    if (el) {  
+      if (id === sectionId) el.classList.remove('hidden');  
+      else el.classList.add('hidden');  
+    }  
+  });  
+  if (sectionId === 'onlSecPersonVoting') {  
+    scrollToTopPersonVoting();  
+  }  
+}  
   
  function joinOnlineRoom() {  
  const input = document.getElementById('onlInputNickname');  
@@ -3720,12 +3785,20 @@ onlineRoomData = room;
  }  
  }  
  }  
- window._lastSeenOnlineStatus = room.status;  
+ if (window._lastSeenOnlineStatus !== room.status) {  
+    if (room.status === 'person_voting') {  
+      _hasAutoScrolledPersonVoting = false;  
+    }  
+  }  
+  if (room.status !== 'person_voting') {  
+    _hasAutoScrolledPersonVoting = false;  
+  }  
+  window._lastSeenOnlineStatus = room.status;  
   
- if (window._lastSeenOnlineRound !== room.currentRoundIdx) {  
- window._lastSeenOnlineRound = room.currentRoundIdx;  
- _lastAutoScrolledVotingRound = -1;  
- _hasAutoScrolledPersonVoting = false;  
+  if (window._lastSeenOnlineRound !== room.currentRoundIdx) {  
+    window._lastSeenOnlineRound = room.currentRoundIdx;  
+    _lastAutoScrolledVotingRound = -1;  
+    _hasAutoScrolledPersonVoting = false;  
  onlMyInspectedBeastsInTurn = [];  
  onlSelectedInspectBeast = null;  
  onlSelectedPassNextId = null;  
@@ -7813,12 +7886,14 @@ container.appendChild(row);
  players: room.players  
  });  
  } else {  
- // 三回合鑑寶結束・進入鑑人投票  
- await db.doc(ONLINE_ROOM_DOC).update({  
- status: 'person_voting',  
- personVotes: {}  
- });  
- }  
+        // 三回合鑑寶結束・進入鑑人投票  
+        _hasAutoScrolledPersonVoting = false;  
+        scrollToTopPersonVoting();  
+        await db.doc(ONLINE_ROOM_DOC).update({  
+          status: 'person_voting',  
+          personVotes: {}  
+        });  
+      }  
  }  
   
  // 鑑人投票 (自己顏色樣式、已投票人數...(x/8))  
@@ -9080,6 +9155,45 @@ container.appendChild(row);
       autoWipeDatabaseOnce();
       checkWatermarkUploadedState();
       loadTasteSettings();
+
+      // 每個瀏覽器獨立記住上一個輸入的暱稱
+      const nInput = document.getElementById('onlInputNickname');
+      if (nInput) {
+        const rememberedName = localStorage.getItem('gudong_online_my_name') || '';
+        if (rememberedName) {
+          nInput.value = rememberedName;
+          myOnlinePlayerName = rememberedName;
+        }
+        nInput.addEventListener('input', (e) => {
+          const v = e.target.value.trim();
+          if (v) {
+            myOnlinePlayerName = v;
+            try { localStorage.setItem('gudong_online_my_name', v); } catch(err) {}
+          }
+        });
+        nInput.addEventListener('change', (e) => {
+          const v = e.target.value.trim();
+          if (v) {
+            myOnlinePlayerName = v;
+            try { localStorage.setItem('gudong_online_my_name', v); } catch(err) {}
+          }
+        });
+      }
+
+      // 開房房號隨機四位數初始化
+      const cInput = document.getElementById('onlInputRoomCode');
+      if (cInput && (!cInput.value || cInput.value === '8888')) {
+        cInput.value = currentOnlineRoomCode || getRandom4DigitRoomCode();
+      }
+      if (cInput) {
+        cInput.addEventListener('input', (e) => {
+          const v = e.target.value.trim();
+          if (v) {
+            currentOnlineRoomCode = v;
+            try { sessionStorage.setItem('gudong_online_room_code', v); } catch(err) {}
+          }
+        });
+      }
 
       // 預設進入模式選擇畫面 (或載入上次選擇的模式)
       try {
@@ -10709,6 +10823,23 @@ container.appendChild(row);
       G.pendingCandidateId = null;
       saveState();
       renderAll();
+      try {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch(e) {}
+      setTimeout(() => {
+        try {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+          const target = document.getElementById('secPersonVoting') || document.getElementById('pvBigTitle');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        } catch(e) {}
+      }, 60);
     }
 
     function renderPersonVotingView() {
