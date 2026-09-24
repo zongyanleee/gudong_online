@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v1.4.40)</title>  
+ <title>古董局中局 (v2.1.6)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -846,6 +846,17 @@
  <div class="text-xs font-bold text-neutral-300 text-left mb-1">全體玩家全程操作軌跡記錄：</div>  
  <div id="onlAllPlayerActionLogs" class="space-y-3 text-left text-xs bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 max-h-80 overflow-y-auto"></div>  
   
+ <div id="onlBotDeductionSection" class="hidden space-y-2 text-left pt-2 border-t border-neutral-800/80">  
+   <div class="flex items-center justify-between text-xs font-bold text-neutral-300 mb-1">  
+     <span class="flex items-center space-x-1.5">  
+       <span class="text-base">💻</span>  
+       <span class="text-amber-400 font-black tracking-wider">電腦角色推理過程覆盤 (AI Deduction Mind-Map)</span>  
+     </span>  
+     <span class="text-[10px] text-neutral-400">點擊卡片展開各輪思考</span>  
+   </div>  
+   <div id="onlBotDeductionContainer" class="space-y-2.5 text-xs"></div>  
+ </div>  
+  
  <div class="pt-2 flex justify-between space-x-2">  
  <button id="btnOnlGameOverRestart" type="button" onclick="onlClickGameOverRestartReady()" class="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-[0.99]">  
  重新開始一局 (0/8)  
@@ -1229,7 +1240,7 @@
   
  <!-- 版本、免責文字與視覺風格微調 -->  
  <div class="text-[11px] text-neutral-500 leading-relaxed pt-1 space-y-2">  
- <div class="font-mono text-neutral-400 font-bold">版本 1.4.40</div>  
+ <div class="font-mono text-neutral-400 font-bold">版本 2.1.3</div>  
  <div>該程式為粉絲製作的古董局中局桌遊助手程式，不代表官方立場</div>  
   
 </div>  
@@ -1413,8 +1424,19 @@ service cloud.firestore {
  const FIRESTORE_COLLECTION = "GudongDatabase";  
  const OFFLINE_STORAGE_KEY = "gudong_offline_history_v2";  
   
- let db = null;  
- let isFirebaseReady = false;  
+ var db = null;  
+ var isFirebaseReady = false;
+
+  /* 全域核心狀態變數 (頂層提升宣告，根除 TDZ ReferenceError) */
+  var currentAppMode = 'mode_picker';
+  var myOnlinePlayerId = null;
+  var myOnlinePlayerName = '';
+  var currentOnlineRoomCode = '8888';
+  var ONLINE_ROOM_DOC = 'GudongOnlineGame/active_room';
+  var onlineRoomData = null;
+  var _mockActionPending = false;
+  var _lastMockActionTime = 0;
+  var _lastWatchdogDiscussionCheck = 0;  
   
  try {  
  if (typeof firebase !== 'undefined') {  
@@ -1451,7 +1473,673 @@ const COLOR_PALETTE = [
  { id: 'blue', name: '藍', bgClass: 'bg-blue-600 text-white border-blue-500', dotClass: 'bg-blue-600 border-blue-400', hex: '#2563eb' },  
  { id: 'purple', name: '紫', bgClass: 'bg-purple-600 text-white border-purple-500', dotClass: 'bg-purple-600 border-purple-400', hex: '#9333ea' },  
  { id: 'white', name: '白', bgClass: 'bg-slate-100 text-neutral-950 border-neutral-300', dotClass: 'bg-slate-100 border-neutral-400', hex: '#ffffff' }  
- ];  
+ ];
+
+    /* ============================================================
+       古董局中局 v2.1.4: 虛擬電腦玩家 (AI) 深度認知與戰術推理引擎
+       ============================================================ */
+/* ============================================================
+       古董局中局 v2.1.3: 虛擬電腦玩家 (AI) 高級獨立認知與實戰推理引擎
+       (BotDeductionEngine: Fog-of-War POV, Role Bayesian Inference, Metagame Rules)
+       ============================================================ */
+                        class BotDeductionEngine {
+  static generateBotDNA(botId, role) {
+    const chars = '0123456789H';
+    let aDNA = '';
+    let sDNA = '';
+    for (let i = 0; i < 50; i++) {
+      aDNA += chars[Math.floor(Math.random() * chars.length)];
+      sDNA += chars[Math.floor(Math.random() * chars.length)];
+    }
+    const titles = ['【慎思者】', '【疾風派】', '【密謀家】', '【鐵壁型】', '【博弈者】', '【洞察者】', '【反串狂】', '【跟票王】'];
+    const pTitle = titles[Math.floor(Math.random() * titles.length)];
+    return { actionDNA: aDNA, speechDNA: sDNA, personaTitle: pTitle };
+  }
+
+  static buildPOV(room, botId) {
+    const me = (room.players || []).find(p => p.id === botId) || {};
+    const goodRoles = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'];
+    const isGood = goodRoles.includes(me.role);
+    const curRoundIdx = room.currentRoundIdx || 0;
+    const curRound = (room.rounds && room.rounds[curRoundIdx]) || { beasts: [], passOrder: [], speeches: [] };
+
+    const evilRoles = ['老朝奉', '藥不然', '鄭國渠'];
+    const isEvil = evilRoles.includes(me.role);
+    
+    // 壞人隊友關係
+    const teammates = [];
+    if (me.role === '老朝奉') {
+      const yao = (room.players || []).find(p => p.role === '藥不然');
+      if (yao) teammates.push(yao.id);
+      const zheng = (room.players || []).find(p => p.role === '鄭國渠');
+      if (zheng) teammates.push(zheng.id);
+    } else if (me.role === '藥不然') {
+      const lao = (room.players || []).find(p => p.role === '老朝奉');
+      if (lao) teammates.push(lao.id);
+      const zheng = (room.players || []).find(p => p.role === '鄭國渠');
+      if (zheng) teammates.push(zheng.id);
+    } else if (me.role === '鄭國渠') {
+      const lao = (room.players || []).find(p => p.role === '老朝奉');
+      if (lao) teammates.push(lao.id);
+      const yao = (room.players || []).find(p => p.role === '藥不然');
+      if (yao) teammates.push(yao.id);
+    }
+
+    const filteredPlayers = (room.players || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      colorId: p.colorId,
+      seatIndex: p.seatIndex,
+      isKnownTeammate: teammates.includes(p.id),
+      role: (p.id === botId || teammates.includes(p.id)) ? p.role : '未知'
+    }));
+
+    const myCurrentInspect = (curRound.turnLogs && curRound.turnLogs[botId] && curRound.turnLogs[botId].inspect) || [];
+    const myInspectWasBlinded = myCurrentInspect.some(ins => ins.resultText && (ins.resultText.includes('偷襲') || ins.resultText.includes('一片黑') || ins.resultText.includes('被幹') || ins.resultText.includes('暈眩')));
+
+    // 親身歷史查驗記憶
+    const allMyInspectHistory = [];
+    (room.rounds || []).forEach((r, rIdx) => {
+      const tLog = r.turnLogs && r.turnLogs[botId];
+      if (tLog && tLog.inspect) {
+        tLog.inspect.forEach(ins => {
+          allMyInspectHistory.push({
+            round: rIdx + 1,
+            beastName: ins.beastName,
+            resultText: ins.resultText,
+            isShownReal: ins.resultText.includes('真品')
+          });
+        });
+      }
+    });
+
+    let goodScoreSoFar = 0;
+    (room.rounds || []).forEach((r, rIdx) => {
+      if (rIdx < curRoundIdx && r.voteResults) {
+        if (r.voteResults.rank1 && r.voteResults.rank1.isReal) goodScoreSoFar++;
+        if (r.voteResults.rank2 && r.voteResults.rank2.isReal) goodScoreSoFar++;
+      }
+    });
+
+    return {
+      myId: botId,
+      myName: me.name || '電腦玩家',
+      myRole: me.role,
+      myColorId: me.colorId,
+      seatIndex: me.seatIndex || 0,
+      isGoodCamp: isGood,
+      isEvilCamp: isEvil,
+      knownTeammateIds: teammates,
+      myInspectWasBlinded: myInspectWasBlinded,
+      actionDNA: me.actionDNA || '55555555555555555555555555555555555555555555555555',
+      speechDNA: me.speechDNA || '55555555555555555555555555555555555555555555555555',
+      personaTitle: me.personaTitle || '【推演AI】',
+      currentRoundIdx: curRoundIdx,
+      currentBeasts: (curRound.beasts || []).map(b => b.name),
+      roundBeastsObj: curRound.beasts || [],
+      passOrders: (room.rounds || []).map(r => r.passOrder || []),
+      speeches: (room.rounds || []).map(r => r.speeches || []),
+      voteResults: (room.rounds || []).map(r => r.voteResults || null),
+      myInspectLogs: myCurrentInspect,
+      allMyInspectHistory: allMyInspectHistory,
+      myAbilityLog: (curRound.turnLogs && curRound.turnLogs[botId] && curRound.turnLogs[botId].ability) || '',
+      otherPlayers: filteredPlayers,
+      goodScoreSoFar: goodScoreSoFar,
+      ambushedVictimsHistory: (me.role === '藥不然') ? (room.yaoVictims || []) : []
+    };
+  }
+
+  // 信念評估系統（支援：藥不然追蹤驗不到者、老朝奉辨識反串許願、好人歷史破綻）
+  static evaluateBeliefs(pov) {
+    const beastScores = {};
+    pov.currentBeasts.forEach(b => {
+      beastScores[b] = { real: 0, fake: 0, certainty: 0.1 };
+    });
+
+    // 1. 自己眼見為實
+    pov.myInspectLogs.forEach(ins => {
+      if (ins.resultText && !ins.resultText.includes('偷襲') && !ins.resultText.includes('一片黑')) {
+        const isReal = ins.resultText.includes('真品');
+        if (beastScores[ins.beastName]) {
+          if (isReal) beastScores[ins.beastName].real += 50;
+          else beastScores[ins.beastName].fake += 50;
+          beastScores[ins.beastName].certainty = 0.95;
+        }
+      }
+    });
+
+    const roleScores = {};
+    pov.otherPlayers.forEach(p => {
+      if (p.id !== pov.myId) {
+        roleScores[p.id] = {
+          xuYuan: 10 + (Math.random() * 12 - 6),
+          fangZhen: 10 + (Math.random() * 12 - 6),
+          laoChaoFeng: 10 + (Math.random() * 12 - 6),
+          zhengGuoQu: 10 + (Math.random() * 12 - 6),
+          credibility: 1.0,
+          caughtLying: false,
+          claimedRole: null,
+          hasFakeClaimedFang: false,
+          hasFakeClaimedLao: false,
+          isFollowCaller: false,     // 是否在跟喊票
+          isBlindGuesser: false,     // 是否在自信瞎猜
+          isEvasiveOrNoInspect: false, // 是否為「真正驗不到的人」
+          claimedEvilCamp: false     // 是否自稱是老朝奉的人（許願反串）
+        };
+      }
+    });
+
+    let lastValidSpeech = null;
+    let recentSpeeches = [];
+
+    pov.speeches.forEach((rSpeeches, rIdx) => {
+      (rSpeeches || []).forEach(sp => {
+        const p = pov.otherPlayers.find(x => x.id === sp.playerId);
+        if (!p || p.id === pov.myId) return;
+
+        const text = sp.speech || '';
+        const claimsFang = /(我是方震|方震查|查出.*壞人)/.test(text);
+        const claimsLao = /(我是老朝奉|我就是老朝奉|老朝奉就是我|全部把鑑人票投我)/.test(text);
+        const claimsEvilMinion = /(老朝奉的人|老朝奉那邊的|老朝奉陣營的|幫老朝奉做事)/.test(text);
+        const isFollowCall = /(跟著投|也跟投|跟大家一致|大勢所趨.*也跟票)/.test(text);
+        const isBlindGuess = /(沒親手把關|沒直接碰|直覺.*真品|直覺.*贗品|憑直覺|大膽瞎猜)/.test(text);
+        const complainsBlind = /(被偷襲|一片黑|暗算|看不清)/.test(text);
+
+        const rMatch = text.match(/【(.*?)】.*?【?(真品|贗品)】?/);
+        const reportedBeast = rMatch ? rMatch[1] : null;
+        const reportedIsReal = rMatch ? (rMatch[2] === '真品') : null;
+
+        const c = roleScores[p.id] || { credibility: 1.0 };
+
+        if (isFollowCall) c.isFollowCaller = true;
+        if (isBlindGuess) c.isBlindGuesser = true;
+        if (claimsEvilMinion) c.claimedEvilCamp = true;
+
+        // 好人親身查驗比對
+        if (reportedBeast !== null) {
+          const myPastCheck = pov.allMyInspectHistory.find(m => m.beastName === reportedBeast);
+          if (myPastCheck && myPastCheck.isShownReal !== reportedIsReal) {
+            c.credibility = 0.15;
+            c.caughtLying = true;
+            c.laoChaoFeng += 35;
+          }
+        }
+
+        // 藥不然專屬推演：尋找「真正驗不到的人」以鎖定方震
+        if (pov.myRole === '藥不然') {
+          // 若玩家發言避談個人具體驗證結果，而是在「跟喊票」或「自信瞎猜」
+          if (isFollowCall || isBlindGuess) {
+            c.isEvasiveOrNoInspect = true;
+            // 真方震因為專注於查驗玩家陣營，經常會跟喊或瞎猜以隱藏自己
+            c.fangZhen += 24;
+          }
+          // 若玩家跳方震：
+          if (claimsFang) {
+            // 藥不然會懷疑是好人假跳 Cover，還是真神？
+            // 若該玩家過去查驗紀錄很實錘，有可能是真方震；若發言浮誇，可能是假跳擋刀
+            if (c.caughtLying || isBlindGuess) {
+              c.fangZhen += 12; // 假跳嫌疑
+            } else {
+              c.fangZhen += 28;
+            }
+          }
+        }
+
+        // 老朝奉專屬推演：面對自稱「老朝奉的人」（許願反串）
+        if (pov.myRole === '老朝奉') {
+          if (claimsEvilMinion) {
+            // 老朝奉明確知道隊友只有藥不然和鄭國渠！任何其他人自稱是老朝奉的人，絕對是好人冒充！
+            // 思考：是普通平民在亂玩，還是【許願】在打 4D Chess 擾亂視線？
+            // 許願有 50% 機率會這樣反串！
+            if (Math.random() < 0.50) {
+              c.xuYuan += 22; // 敏銳識破許願的反串！
+            } else {
+              c.xuYuan -= 10; // 被反串搞糊塗，誤以為是普通搗亂平民！
+            }
+          }
+        }
+
+        // 好人面對有人跳老朝奉
+        if (claimsLao && pov.isGoodCamp) {
+          c.hasFakeClaimedLao = true;
+          if (Math.random() < 0.60) {
+            c.laoChaoFeng -= 18; // 認為是藥不然/鄭國渠在擋刀，不中計！
+          } else {
+            c.laoChaoFeng += 25;
+          }
+        }
+
+        if (reportedBeast && rIdx === pov.currentRoundIdx && beastScores[reportedBeast]) {
+          if (reportedIsReal) beastScores[reportedBeast].real += 10 * c.credibility;
+          else beastScores[reportedBeast].fake += 10 * c.credibility;
+          lastValidSpeech = { beast: reportedBeast, isReal: reportedIsReal, speakerName: p.name, speakerId: p.id };
+        }
+      });
+    });
+
+    return {
+      beastScores,
+      roleScores,
+      lastValidSpeech,
+      recentSpeeches
+    };
+  }
+
+  static decideInspect(pov, param2, param3) {
+    let beasts = [];
+    if (Array.isArray(param2)) beasts = param2;
+    else if (Array.isArray(param3)) beasts = param3;
+    else if (pov && pov.roundBeastsObj && pov.roundBeastsObj.length > 0) beasts = pov.roundBeastsObj;
+    else if (pov && pov.currentBeasts && pov.currentBeasts.length > 0) {
+      beasts = pov.currentBeasts.map(name => ({ name: name, isReal: true }));
+    }
+    if (!beasts || beasts.length === 0) return [];
+
+    const needed = (pov.myRole === '許願') ? 2 : 1;
+    const shuffled = [...beasts].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, needed);
+  }
+
+  static decideSkill(pov, beliefs, room, roundObj) {
+    if (pov.myRole === '方震') {
+      const candidates = pov.otherPlayers.filter(p => p.id !== pov.myId);
+      if (candidates.length === 0) return { ability: '已完成能力行動', abilityLocked: true };
+      const sorted = candidates.sort((a, b) => {
+        const sA = beliefs.roleScores[a.id] ? beliefs.roleScores[a.id].laoChaoFeng : 10;
+        const sB = beliefs.roleScores[b.id] ? beliefs.roleScores[b.id].laoChaoFeng : 10;
+        return sB - sA;
+      });
+      const targetId = sorted[0].id;
+      const targetP = (room && room.players) ? room.players.find(x => x.id === targetId) : candidates[0];
+      const isGood = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'].includes(targetP ? targetP.role : '');
+      const campStr = isGood ? '許願陣營 (好人)' : '老朝奉陣營 (壞人)';
+      const targetName = targetP ? targetP.name : '對手';
+      return {
+        ability: `查驗【${targetName}】：屬於【${campStr}】`,
+        abilityLocked: true,
+        fangZhenTargetId: targetId,
+        fangZhenTargetName: targetName,
+        fangZhenCamp: campStr
+      };
+    }
+
+    if (pov.myRole === '藥不然') {
+      const candidates = pov.otherPlayers.filter(p => p.id !== pov.myId && !pov.knownTeammateIds.includes(p.id));
+      if (candidates.length === 0) return { ability: '跳過不偷襲', abilityLocked: true };
+      const sorted = candidates.sort((a, b) => {
+        const sA = beliefs.roleScores[a.id] ? beliefs.roleScores[a.id].fangZhen : 10;
+        const sB = beliefs.roleScores[b.id] ? beliefs.roleScores[b.id].fangZhen : 10;
+        return sB - sA;
+      });
+      const targetId = sorted[0].id;
+      const targetP = (room && room.players) ? room.players.find(x => x.id === targetId) : candidates[0];
+      if (targetP) targetP.isAmbushed = true;
+      const targetName = targetP ? targetP.name : '對手';
+      return {
+        ability: `偷襲了【${targetName}】`,
+        abilityLocked: true,
+        ambushedPlayerId: targetId
+      };
+    }
+
+    if (pov.myRole === '老朝奉') {
+      const activate = Math.random() < 0.60;
+      if (activate && roundObj) roundObj.laoChaoFengActive = true;
+      return {
+        ability: activate ? '開啟擾亂（真偽反轉）' : '未開啟擾亂（確定未發動）',
+        abilityLocked: true,
+        laoActive: activate
+      };
+    }
+
+    if (pov.myRole === '鄭國渠') {
+      const beasts = (roundObj && roundObj.beasts) ? roundObj.beasts : (pov.roundBeastsObj || []);
+      const bChoice = beasts.length > 0 ? beasts[Math.floor(Math.random() * beasts.length)].name : null;
+      if (bChoice && roundObj) roundObj.blockedBeast = bChoice;
+      return {
+        ability: bChoice ? `封鎖【${bChoice}】` : '不封鎖任何獸首',
+        abilityLocked: true,
+        blockedBeast: bChoice
+      };
+    }
+
+    return {
+      ability: '已完成能力行動',
+      abilityLocked: true
+    };
+  }
+
+  static decidePassNext(pov, param2, param3) {
+    const candidates = Array.isArray(param3) ? param3 : (Array.isArray(param2) ? param2 : []);
+    if (!candidates || candidates.length === 0) return null;
+    const picked = candidates[Math.floor(Math.random() * candidates.length)];
+    return picked;
+  }
+
+  static decideVote(pov, beliefs, param3, param4) {
+    let beasts = [];
+    let maxVotes = 2;
+
+    if (typeof param3 === 'number') {
+      maxVotes = param3 || 2;
+      if (Array.isArray(param4)) beasts = param4;
+      else if (pov && pov.roundBeastsObj && pov.roundBeastsObj.length > 0) beasts = pov.roundBeastsObj;
+      else if (pov && pov.currentBeasts && pov.currentBeasts.length > 0) {
+        beasts = pov.currentBeasts.map(name => ({ name: name, isReal: true }));
+      }
+    } else if (Array.isArray(param3)) {
+      beasts = param3;
+      if (typeof param4 === 'number') maxVotes = param4;
+    } else {
+      if (pov && pov.roundBeastsObj && pov.roundBeastsObj.length > 0) beasts = pov.roundBeastsObj;
+      else if (pov && pov.currentBeasts && pov.currentBeasts.length > 0) {
+        beasts = pov.currentBeasts.map(name => ({ name: name, isReal: true }));
+      }
+    }
+
+    if (!beasts || beasts.length === 0) {
+      beasts = (pov && pov.currentBeasts && pov.currentBeasts.length > 0)
+        ? pov.currentBeasts.map(name => ({ name: name, isReal: true }))
+        : [{ name: '目標1', isReal: true }, { name: '目標2', isReal: false }];
+    }
+
+    let sortedBeastNames = [];
+    if (pov && pov.isGoodCamp) {
+      sortedBeastNames = [...beasts].sort((a, b) => {
+        const nameA = a.name || a;
+        const nameB = b.name || b;
+        const scoreA = (beliefs && beliefs.beastScores && beliefs.beastScores[nameA]) ? beliefs.beastScores[nameA].real : 0;
+        const scoreB = (beliefs && beliefs.beastScores && beliefs.beastScores[nameB]) ? beliefs.beastScores[nameB].real : 0;
+        return scoreB - scoreA;
+      }).map(b => b.name || b);
+    } else {
+      sortedBeastNames = [...beasts].sort((a, b) => {
+        const nameA = a.name || a;
+        const nameB = b.name || b;
+        const fakeA = (beliefs && beliefs.beastScores && beliefs.beastScores[nameA]) ? beliefs.beastScores[nameA].fake : 0;
+        const fakeB = (beliefs && beliefs.beastScores && beliefs.beastScores[nameB]) ? beliefs.beastScores[nameB].fake : 0;
+        return fakeB - fakeA;
+      }).map(b => b.name || b);
+    }
+
+    const b1 = sortedBeastNames[0] || '目標1';
+    const b2 = sortedBeastNames[1] || sortedBeastNames[0] || '目標2';
+
+    const voteMap = {};
+    if (maxVotes >= 2 && b1 !== b2) {
+      voteMap[b1] = 1;
+      voteMap[b2] = 1;
+    } else {
+      voteMap[b1] = maxVotes;
+    }
+
+    if (typeof param3 === 'number') {
+      return voteMap;
+    }
+
+    const resArray = (maxVotes >= 2 && b1 !== b2) ? [b1, b2] : [b1];
+    Object.assign(resArray, voteMap);
+    return resArray;
+  }
+
+  static decidePersonVote(pov, beliefs, candidates) {
+    if (!candidates || candidates.length === 0) return null;
+
+    // 1. 好人陣營捉老朝奉
+    if (pov.isGoodCamp) {
+      const scored = candidates.map(c => ({
+        id: c.id,
+        score: (beliefs.roleScores[c.id] ? beliefs.roleScores[c.id].laoChaoFeng : 10)
+      })).sort((a, b) => b.score - a.score);
+
+      const rand = Math.random();
+      if (rand < 0.60 || scored.length < 2) return scored[0].id;
+      else if (rand < 0.85 || scored.length < 3) return scored[1].id;
+      else return scored[2].id;
+    } 
+    
+    // 2. 老朝奉鎖定許願（排除隊友，絕不棄票）
+    else if (pov.myRole === '老朝奉') {
+      const goodCandidates = candidates.filter(c => !pov.knownTeammateIds.includes(c.id));
+      const scored = goodCandidates.map(c => ({
+        id: c.id,
+        score: (beliefs.roleScores[c.id] ? beliefs.roleScores[c.id].xuYuan : 10)
+      })).sort((a, b) => b.score - a.score);
+
+      const rand = Math.random();
+      if (rand < 0.45 || scored.length < 2) return scored[0].id;
+      else if (rand < 0.78 || scored.length < 3) return scored[1].id;
+      else return scored[Math.floor(Math.random() * scored.length)].id;
+    } 
+    
+    // 3. 藥不然鎖定方震（尋找「真正驗不到的人」/ 逆向識破假跳）
+    else if (pov.myRole === '藥不然') {
+      const goodCandidates = candidates.filter(c => !pov.knownTeammateIds.includes(c.id));
+      const scored = goodCandidates.map(c => ({
+        id: c.id,
+        score: (beliefs.roleScores[c.id] ? beliefs.roleScores[c.id].fangZhen : 10)
+      })).sort((a, b) => b.score - a.score);
+
+      const rand = Math.random();
+      if (rand < 0.40 || scored.length < 2) return scored[0].id;
+      else if (rand < 0.75 || scored.length < 3) return scored[1].id;
+      else return scored[Math.floor(Math.random() * scored.length)].id;
+    } 
+    
+    // 4. 鄭國渠投票：混淆好人，【絕對不投老朝奉】
+    else {
+      const goodCandidates = candidates.filter(c => !pov.knownTeammateIds.includes(c.id));
+      return goodCandidates[Math.floor(Math.random() * goodCandidates.length)].id;
+    }
+  }
+
+  // 高動態多樣性發言生成引擎（保證每個人講的話各不相同）
+  static generateSpeech(pov, beliefs) {
+    const curRoundIdx = pov.currentRoundIdx;
+    const curPassOrder = pov.passOrders[curRoundIdx] || [];
+    const myPosIdx = curPassOrder.indexOf(pov.myId);
+    const totalSpeakers = curPassOrder.length || 8;
+    const isTailSpeaker = (myPosIdx >= totalSpeakers - 2 && myPosIdx !== -1);
+    const prevSpeech = beliefs.lastValidSpeech;
+
+    // 動態修飾語彙模組庫（排列組合生成無限自然對話）
+    const openers = [
+      '諸位聽我說，', '我直說了吧，', '兄弟們看過來，', '廢話不多說，',
+      '仔細盤了一下，', '根據我的觀察，', '客觀來說，', '理智研判，',
+      '欸不是，', '大家先別急著下定論，', '這裡頭水很深，', '我看某些人有點慌了，',
+      '我個人斟酌了一下，', '這把大家務必聽我一句，', '實話實說，', '恕我直言，'
+    ];
+    const closers = [
+      '好人陣營千萬把眼睛擦亮！', '聽我的準沒錯，票別投偏了！', '這波大家自己看著辦！',
+      '就問你們敢不敢跟我投？', '局勢很明朗了，別猶豫！', '這一票至關重要，慎重！',
+      '誰是內鬼這輪投票見分曉！', '票源凝聚才能贏，大家跟上！', '我敢打包票肯定沒問題！'
+    ];
+    const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const open = getRandom(openers);
+    const close = getRandom(closers);
+
+    // 1. 被偷襲致盲的憤怒控訴
+    if (pov.myInspectWasBlinded) {
+      if (myPosIdx > 0) {
+        const passerId = curPassOrder[myPosIdx - 1];
+        const passer = pov.otherPlayers.find(p => p.id === passerId);
+        const passerName = passer ? passer.name : '上家';
+        const blindPhrases = [
+          `${open}哪個王八蛋剛才偷襲我？！【${passerName}】你剛把手機塞給我我就眼前一片黑，你八成就是藥不然吧？！`,
+          `幹！我剛一接過手機直接暈眩一片黑！【${passerName}】你絕對脫不了干係，${close}`,
+          `${open}有人暗算我！手機一拿到啥都看不見，偷襲我的八成就是【${passerName}】，大家小心！`
+        ];
+        return getRandom(blindPhrases);
+      }
+      return `${open}我剛才眼前一片黑被偷襲了！前面傳遞的幾個人絕對大有問題，${close}`;
+    }
+
+    // 2. 許願極限反串（跳壞人陣營攪亂視線，保護自己的 2 分）
+    // 條件：許願本人、第2或第3輪、隨機 28% 機率
+    if (pov.myRole === '許願' && curRoundIdx >= 1 && Math.random() < 0.28) {
+      const anyBeast = pov.currentBeasts[0] || '目標獸首';
+      const fakeEvilClaims = [
+        `${open}實話說我也是老朝奉那邊的，這輪【${anyBeast}】我們肯定要保，好人別做無謂掙扎了。`,
+        `大家別猜了，我其實是老朝奉的人，這把風向已經變了，識相的就別亂動【${anyBeast}】！`,
+        `${open}局勢都這樣了我直接攤牌，我就是幫老朝奉做事的，這盤好人投不贏！${close}`
+      ];
+      return getRandom(fakeEvilClaims);
+    }
+
+    // 3. 真方震的進階戰術：
+    // 若查出壞人：第3輪急迫明跳，否則暗導
+    // 若未查出壞人：有機會「跟喊票」或「自信瞎猜」
+    if (pov.myRole === '方震') {
+      const hasCheckedEvil = pov.myAbilityLog && pov.myAbilityLog.includes('老朝奉陣營 (壞人)');
+      if (hasCheckedEvil) {
+        const match = pov.myAbilityLog.match(/查驗【(.*?)】：屬於【老朝奉陣營/);
+        const targetStr = match ? match[1] : '對手';
+        if (curRoundIdx === 2 || Math.random() < 0.35) {
+          return `${open}局勢緊迫我不裝了，我是方震！我親自查驗出【${targetStr}】屬於老朝奉陣營，${close}`;
+        } else {
+          return `${open}大家冷靜聽我說，我這輪直覺【${targetStr}】破綻百出，絕對有問題，大家票千萬別投給他！`;
+        }
+      } else {
+        // 未查到壞人時：方震高階偽裝（跟喊票 或 自信瞎猜）
+        const randTactics = Math.random();
+        if (randTactics < 0.35 && prevSpeech && prevSpeech.beast) {
+          // 跟喊票（隱藏在羊群中）
+          const followPhrases = [
+            `${open}前面【${prevSpeech.speakerName}】的發言邏輯很嚴密，既然大勢所趨，那我這輪也跟著投【${prevSpeech.beast}】，求穩！`,
+            `認同【${prevSpeech.speakerName}】的說法，【${prevSpeech.beast}】我也覺得大家意見很一致，這輪我也跟票！${close}`,
+            `${open}聽起來【${prevSpeech.beast}】是目前最具共識的，大家意見一致那我也跟投，不搞特立獨行。`
+          ];
+          return getRandom(followPhrases);
+        } else if (randTactics < 0.65 && pov.currentBeasts.length > 0) {
+          // 自信瞎猜（假裝普通平民測反應）
+          const guessedBeast = pov.currentBeasts[Math.floor(Math.random() * pov.currentBeasts.length)];
+          const guessReal = Math.random() < 0.5;
+          const guessPhrases = [
+            `${open}我這輪雖沒直接碰【${guessedBeast}】，但看某幾個人的微表情，這隻直覺是【${guessReal ? '真品' : '贗品'}】！大家敢不敢信我一把？`,
+            `憑我多年的看人眼光，雖然我沒親手把關【${guessedBeast}】，但我大膽瞎猜它就是【${guessReal ? '真品' : '贗品'}】！${close}`,
+            `${open}雖然我驗的是別的，但我直覺【${guessedBeast}】大有貓膩必定是【${guessReal ? '真品' : '贗品'}】，大家參考！`
+          ];
+          return getRandom(guessPhrases);
+        }
+      }
+    }
+
+    // 4. 好人平民假跳方震（Cover 真神 / 擋刀）
+    if (pov.isGoodCamp && pov.myRole !== '方震' && Math.random() < 0.20) {
+      const suspect = pov.otherPlayers.find(p => beliefs.roleScores[p.id] && beliefs.roleScores[p.id].laoChaoFeng > 20);
+      const sName = suspect ? suspect.name : '對家';
+      const fakeFangPhrases = [
+        `${open}各位好人不用慌，我是方震！我剛親自查驗了【${sName}】屬於老朝奉陣營，好人全體跟我走！`,
+        `我不忍了，直接表明身分我是方震！我剛查出【${sName}】就是壞人，${close}`,
+        `${open}好人聽我指揮，我是方震！【${sName}】絕對是老朝奉陣營，這把大家跟我鎖死他！`
+      ];
+      return getRandom(fakeFangPhrases);
+    }
+
+    // 5. 壞人在第 3 回合的高階博弈（大優 vs 大劣）
+    if (curRoundIdx === 2 && pov.isEvilCamp) {
+      const isLosingBadly = (pov.goodScoreSoFar >= 3);
+      if ((pov.myRole === '鄭國渠' || pov.myRole === '藥不然') && isLosingBadly && Math.random() < 0.40) {
+        return `${open}行了，這局既然到這地步我攤牌了，我就是老朝奉！這局好人有種全部把鑑人票砸在老子頭上！`;
+      }
+      if (pov.myRole === '老朝奉' && isLosingBadly && Math.random() < 0.25) {
+        return `別到處疑神疑鬼了，我就是老朝奉！敢不敢在鑑人階段全投我？不敢投就別在那邊叫！${close}`;
+      }
+      if (pov.myRole === '藥不然' && Math.random() < 0.30) {
+        const victim = pov.otherPlayers.find(p => !pov.knownTeammateIds.includes(p.id));
+        const vName = victim ? victim.name : '對手';
+        return `${open}實話告訴你們，上一輪被我偷襲的就是【${vName}】！他眼前一片黑什麼都沒看到，純粹是在胡謅！`;
+      }
+    }
+
+    // 6. 尾家歸票發言（Anchor Speech）
+    if (isTailSpeaker && pov.currentBeasts.length > 0) {
+      const rankedBeasts = [...pov.currentBeasts].sort((a, b) => {
+        const sa = beliefs.beastScores[a] ? beliefs.beastScores[a].real : 0;
+        const sb = beliefs.beastScores[b] ? beliefs.beastScores[b].real : 0;
+        return sb - sa;
+      });
+      const topBeast = rankedBeasts[0];
+      const secondBeast = rankedBeasts[1] || rankedBeasts[0];
+
+      if (pov.isGoodCamp) {
+        const goodAnchorPhrases = [
+          `聽完前面一整輪的發言，這輪好人情報很集中在【${topBeast}】與【${secondBeast}】。身為尾家我為好人歸票：大家統一投【${topBeast}】，千萬不要分票！`,
+          `${open}前面的發言大家都聽到了，【${topBeast}】的保真度最高。我作為尾家負責歸票，大家把票砸在【${topBeast}】！${close}`,
+          `綜合全場陳詞，最沒爭議的就是【${topBeast}】。尾家在此歸票：全體好人鎖定【${topBeast}】，穩拿這一分！`
+        ];
+        return getRandom(goodAnchorPhrases);
+      } else {
+        const fakeChoice = rankedBeasts[rankedBeasts.length - 1];
+        const evilAnchorPhrases = [
+          `前面幾位都在帶節奏，【${topBeast}】明顯有問題！聽我尾家總結，大家保守一點把票投給【${fakeChoice}】比較穩！`,
+          `${open}大家千萬別被前面的言論誤導，【${topBeast}】十有八九是陷阱。聽我尾家歸票：改投【${fakeChoice}】才是明智之舉！`
+        ];
+        return getRandom(evilAnchorPhrases);
+      }
+    }
+
+    // 7. 前後發言連鎖（Speech Chaining）
+    if (pov.myInspectLogs.length > 0) {
+      const ins = pov.myInspectLogs[0];
+      const sawReal = ins.resultText.includes('真品');
+      const isTruth = pov.isGoodCamp ? (Math.random() < 0.92) : (Math.random() < 0.30);
+      const reportedReal = isTruth ? sawReal : !sawReal;
+      const statusWord = reportedReal ? '真品' : '贗品';
+
+      // 與前家撞同隻獸首
+      if (prevSpeech && prevSpeech.beast === ins.beastName) {
+        if (prevSpeech.isReal === reportedReal) {
+          const echoPhrases = [
+            `剛才【${prevSpeech.speakerName}】說【${ins.beastName}】是${statusWord}，我親眼驗證也是${statusWord}！雙重確認無誤！`,
+            `${open}認同【${prevSpeech.speakerName}】的判斷，【${ins.beastName}】我剛也仔細看過，絕對是${statusWord}！${close}`,
+            `【${ins.beastName}】這件有我跟【${prevSpeech.speakerName}】兩個人同時背書，確認是${statusWord}，大家放心投！`
+          ];
+          return getRandom(echoPhrases);
+        } else {
+          const refutePhrases = [
+            `【${prevSpeech.speakerName}】你在胡說什麼？！你剛剛說【${ins.beastName}】是${prevSpeech.isReal ? '真品' : '贗品'}，但我親手查驗分明是${statusWord}！你絕對有鬼！`,
+            `${open}【${prevSpeech.speakerName}】你少在那邊睜眼說瞎話！【${ins.beastName}】我剛上手明明是${statusWord}，你到底是瞎了還是內鬼？！`,
+            `當場抓包！【${prevSpeech.speakerName}】剛才宣稱【${ins.beastName}】的結果跟我完全相反，我驗是${statusWord}，大家千萬提防他！`
+          ];
+          return getRandom(refutePhrases);
+        }
+      }
+
+      // 與前家不同隻獸首
+      if (prevSpeech && prevSpeech.beast && Math.random() < 0.50) {
+        const shiftPhrases = [
+          `前面【${prevSpeech.speakerName}】在聊【${prevSpeech.beast}】，但我這輪看的是【${ins.beastName}】，確認為【${statusWord}】，大家票源別偏廢！`,
+          `${open}大家注意力別全放在【${prevSpeech.beast}】上，我親自把關的【${ins.beastName}】是【${statusWord}】，建議這件也要拿！${close}`,
+          `聽了【${prevSpeech.speakerName}】的發言各有道理，我這輪的重點在【${ins.beastName}】，百分百是【${statusWord}】，大家參考！`
+        ];
+        return getRandom(shiftPhrases);
+      }
+
+      // 標準個人查驗報告
+      if (pov.isGoodCamp) {
+        const standardGood = [
+          `${open}我這輪查驗了【${ins.beastName}】，手感沉實、紋理細膩，確定是【${statusWord}】！${close}`,
+          `這輪我看了【${ins.beastName}】，屬於【${statusWord}】，大家投票請務必參考！`,
+          `${open}親自過目了【${ins.beastName}】，各項細節吻合，鑑定為【${statusWord}】！`
+        ];
+        return getRandom(standardGood);
+      } else {
+        const standardEvil = [
+          `${open}我親手查驗【${ins.beastName}】保證是【${statusWord}】，大家放心跟我投！`,
+          `別聽其他人瞎猜，我這隻【${ins.beastName}】我敢擔保是【${statusWord}】，跟我走準沒錯！${close}`,
+          `${open}【${ins.beastName}】這件我看了，做工沒得說，絕對是【${statusWord}】！`
+        ];
+        return getRandom(standardEvil);
+      }
+    }
+
+    return `${open}局勢還在觀察中，大家投票時務必保持清醒，${close}`;
+  }
+    }
+    window.BotDeductionEngine = BotDeductionEngine;
+
+  
   
  const ZODIAC_ORDER = ['鼠','牛','虎','兔','龍','蛇','馬','羊','猴','雞','狗','豬'];  
   
@@ -1826,7 +2514,7 @@ service cloud.firestore {
  window.getServerNow = getServerNow;  
   
  // --- 4. 防休眠 (Web Wake Lock API) & 邊緣手勢/返回防跳出攔截 ---  
- let _screenWakeLock = null;  
+ var _screenWakeLock = null;  
  async function requestScreenWakeLock() {  
  try {  
  if ('wakeLock' in navigator && !_screenWakeLock) {  
@@ -1871,7 +2559,7 @@ service cloud.firestore {
  window.initNavigationInterception = initNavigationInterception;  
   
  // --- 5. AudioContext 權限全域解鎖 (突破手機瀏覽器 Autoplay 限制) ---  
- let _globalAudioUnlocked = false;  
+ var _globalAudioUnlocked = false;  
  function unlockGlobalAudio() {  
  if (_globalAudioUnlocked) return;  
  _globalAudioUnlocked = true;  
@@ -1982,7 +2670,7 @@ service cloud.firestore {
  window.initTouchRevealCard = initTouchRevealCard;  
   
  // --- 7. 斷線接管與死鎖防護 (Deadlock Prevention & Auto-Takeover) ---  
- let _isExecutingAutoTakeover = false;  
+ var _isExecutingAutoTakeover = false;  
  async function executeAutoTakeoverForCurrentTurn(room) {  
  if (!room || !isFirebaseReady || !db) return;  
  const curRoundIdx = room.currentRoundIdx || 0;  
@@ -2023,9 +2711,9 @@ service cloud.firestore {
  this.sfxGain = null;  
  this.isBgmPlaying = false;  
  this.bgmOscs = null;  
- this.bgmVolume = parseFloat(localStorage.getItem('gudong_bgm_vol') || '0.25');  
- this.sfxVolume = parseFloat(localStorage.getItem('gudong_sfx_vol') || '0.65');  
- this.isMuted = localStorage.getItem('gudong_sound_muted') === 'true';  
+ this.bgmVolume = parseFloat((function(){ try { return localStorage.getItem('gudong_bgm_vol'); } catch(e){ return null; } })() || '0.25');  
+ this.sfxVolume = parseFloat((function(){ try { return localStorage.getItem('gudong_sfx_vol'); } catch(e){ return null; } })() || '0.65');  
+ this.isMuted = (function(){ try { return localStorage.getItem('gudong_sound_muted'); } catch(e){ return null; } })() === 'true';  
  }  
   
  init() {  
@@ -2292,7 +2980,7 @@ service cloud.firestore {
  // =========================================================================  
  // 視覺抽屜控制器 (Taste Settings Engine)  
  // =========================================================================  
- let _isTasteDrawerOpen = false;  
+ var _isTasteDrawerOpen = false;  
  function toggleTasteSettingsDrawer() {  
  _isTasteDrawerOpen = !_isTasteDrawerOpen;  
  const drawer = document.getElementById('tasteSettingsDrawer');  
@@ -2493,7 +3181,7 @@ service cloud.firestore {
   window.saveOnlineNickname = saveOnlineNickname;
   
   
-  let currentOnlineRoomCode = getRandom4DigitRoomCode();  
+  currentOnlineRoomCode = currentOnlineRoomCode || getRandom4DigitRoomCode();  
   
   function getOnlineRoomDoc(code) {  
     let c = (code || currentOnlineRoomCode || getRandom4DigitRoomCode()).toString().replace(/\D/g, "");  
@@ -2506,7 +3194,7 @@ service cloud.firestore {
     return `GudongOnlineGame/room_${c}`;  
   }  
   
-  let ONLINE_ROOM_DOC = getOnlineRoomDoc(currentOnlineRoomCode);
+  ONLINE_ROOM_DOC = ONLINE_ROOM_DOC || getOnlineRoomDoc(currentOnlineRoomCode);
 
   function getRoomHostId(room) {
     if (!room) return null;
@@ -2516,9 +3204,9 @@ service cloud.firestore {
   }
   window.getRoomHostId = getRoomHostId;
   
- let myOnlinePlayerId = null;  
- let myOnlinePlayerName = "";  
- let onlineRoomData = null;  
+ myOnlinePlayerId = myOnlinePlayerId || null;  
+ myOnlinePlayerName = myOnlinePlayerName || '';  
+ onlineRoomData = onlineRoomData || null;  
  let onlineRoomUnsubscribe = null;  
  let onlAnimDotsTimer = null;  
  let onlAnimDotsStr = '.';  
@@ -2527,8 +3215,8 @@ service cloud.firestore {
  let onlSelectedPassNextId = null;  
  let onlMyVoteMap = {};  
  let onlSelectedPersonTargetId = null;  
- let _lastAutoScrolledVotingRound = -1;  
- let _hasAutoScrolledPersonVoting = false;  
+ var _lastAutoScrolledVotingRound = -1;  
+ var _hasAutoScrolledPersonVoting = false;  
   
  function autoScrollToVotingStageIfNeeded(room) {  
  if (!room || room.status !== 'voting') return;  
@@ -2578,13 +3266,13 @@ service cloud.firestore {
  let onlFangZhenSelectedTargetId = null;  
  let onlCollapsedRoundsMap = {};  
  let onlMyInspectedBeastsInTurn = [];  
- let _lobbyCountdownTimer = null;  
- let _lobbyCountdownVal = 3;  
- let _lobbyCountdownPendingStart = false;  
- let _hasEverJoinedLobby = false;  
- let _lastSeenOnlineStatus = null;  
- let _lastSeenOnlineGameStart = null;  
- let _lastSeenOnlineRound = null;  
+ var _lobbyCountdownTimer = null;  
+ var _lobbyCountdownVal = 3;  
+ var _lobbyCountdownPendingStart = false;  
+ var _hasEverJoinedLobby = false;  
+ var _lastSeenOnlineStatus = null;  
+ var _lastSeenOnlineGameStart = null;  
+ var _lastSeenOnlineRound = null;  
   
  function resolveOnlineRoomDoc() {  
     try {  
@@ -2622,7 +3310,7 @@ service cloud.firestore {
 /* ============================================================  
  雙模式管理器：古董局中局小幫手 (單機) vs 線上版 Beta (8人連線)  
  ============================================================ */  
- let currentAppMode = 'mode_picker'; // 'mode_picker' | 'local' | 'online'  
+ currentAppMode = currentAppMode || 'mode_picker'; // 'mode_picker' | 'local' | 'online'  
   
  function selectAppMode(mode) {  
  window._isViewingGameOver = false;  
@@ -3169,7 +3857,7 @@ service cloud.firestore {
  }  
  window.onlCastRestartVote = onlCastRestartVote;  
   
- let _restartVoteInterval = null;  
+ var _restartVoteInterval = null;  
  function checkAndRenderRestartVoteModal(room) {  
  const modal = document.getElementById('onlRestartVoteModal');  
  if (!modal) return;  
@@ -3545,7 +4233,7 @@ service cloud.firestore {
  }  
  window.onlCastCloseVote = onlCastCloseVote;  
   
- let _closeVoteInterval = null;  
+ var _closeVoteInterval = null;  
  function checkAndRenderCloseVoteModal(room) {  
  const modal = document.getElementById('onlCloseVoteModal');  
  if (!modal) return;  
@@ -4175,7 +4863,7 @@ async function kickOnlinePlayer(targetId, event) {
  }  
  }  
   
- let _lobbyWaitingTimeoutTimer = null;  
+ var _lobbyWaitingTimeoutTimer = null;  
  function renderOnlineLobby(room, me) {  
  if (!_lobbyWaitingTimeoutTimer) {  
  _lobbyWaitingTimeoutTimer = setInterval(() => {  
@@ -4252,7 +4940,7 @@ async function kickOnlinePlayer(targetId, event) {
  ${kickBtnHtml}  
  </div>  
  <div class="text-[10px] font-bold text-neutral-200 mt-1 max-w-[64px] truncate text-center ${isMe ? 'text-amber-300' : ''}">  
- ${occupant.name}${isMe ? ' (你)' : ''}  
+ ${occupant.name}${isMe ? ' (你)' : (occupant.personaTitle ? `<div class="text-[8px] text-amber-400 font-mono leading-none mt-0.5 truncate">${occupant.personaTitle}</div>` : '')}  
  </div>  
  `;  
  } else {  
@@ -4386,7 +5074,7 @@ async function kickOnlinePlayer(targetId, event) {
  }  
   
  // 換座：順時針/逆時針換位  
- let _shiftSeatDebounceTimer = null;  
+ var _shiftSeatDebounceTimer = null;  
   
  // 依要求1：使用 Firebase Transaction 實作『佔用座位』的原子化寫入 (Atomic Operation)，優雅降級 Toast 提示  
  async function shiftMySeat(delta) {  
@@ -4613,6 +5301,7 @@ async function kickOnlinePlayer(targetId, event) {
  }  
  }  
   
+ const dna = BotDeductionEngine.generateBotDNA('mock_p_' + Date.now() + '_' + (added + 1), '');
  players.push({  
  id: 'mock_p_' + Date.now() + '_' + (added + 1),  
  name: warlordName,  
@@ -4624,7 +5313,10 @@ async function kickOnlinePlayer(targetId, event) {
  roleConfirmed: true,  
  isAmbushed: false,  
  isPermanentlyAmbushed: false,  
- confusedRound: null  
+ confusedRound: null,
+ actionDNA: dna.actionDNA,
+ speechDNA: dna.speechDNA,
+ personaTitle: dna.personaTitle
  });  
  added++;  
  }  
@@ -5374,7 +6066,7 @@ const pGrid = document.getElementById('onlPassiveBeastsGrid');
  }  
  }  
   
- let _onlActiveTurnHistoryCollapsed = true;  
+ var _onlActiveTurnHistoryCollapsed = true;  
  function toggleActiveTurnHistoryCollapse() {  
  window._hasExplicitlyToggledTurnHistory = true;  
  _onlActiveTurnHistoryCollapsed = !_onlActiveTurnHistoryCollapsed;  
@@ -6812,7 +7504,7 @@ function renderPassOrderRows(room, curRound) {
  // =========================================================================  
  // 需求 3：老朝奉陣營技能回顧日誌 (Secret Action Log)  
  // =========================================================================  
- let _secretActionLogModalOpen = false;  
+ var _secretActionLogModalOpen = false;  
  function toggleSecretActionLogModal() {  
  _secretActionLogModalOpen = !_secretActionLogModalOpen;  
  const modal = document.getElementById('onlSecretActionLogModal');  
@@ -6911,7 +7603,7 @@ function renderPassOrderRows(room, curRound) {
  // =========================================================================  
  // 需求 5：非行動/傳遞階段的「常駐戰局情報看板 (Game Intel Dashboard)」  
  // =========================================================================  
- let _gameIntelCollapsed = false;  
+ var _gameIntelCollapsed = false;  
  function toggleGameIntelDashboardCollapse() {  
  _gameIntelCollapsed = !_gameIntelCollapsed;  
  const body = document.getElementById('onlGameIntelBody');  
@@ -8403,6 +9095,160 @@ container.appendChild(row);
           </div>
         `;
       });
+      // 依要求：渲染電腦角色推理過程覆盤（僅在包含電腦角色時呈現）
+      renderBotDeductionLogsView(room);
+    }
+
+    
+    function renderBotDeductionLogsView(room) {
+      const sec = document.getElementById('onlBotDeductionSection');
+      const container = document.getElementById('onlBotDeductionContainer');
+      if (!sec || !container) return;
+
+      const botPlayers = (room.players || []).filter(p => (p.id && p.id.startsWith('mock_p_')) || p.isMock);
+      if (botPlayers.length === 0) {
+        sec.classList.add('hidden');
+        return;
+      }
+
+      sec.classList.remove('hidden');
+      container.innerHTML = '';
+
+      const goodRoles = ['許願', '方震', '姬雲浮', '黃煙煙', '木戶加奈'];
+
+      botPlayers.forEach((p, idx) => {
+        const pc = COLOR_PALETTE.find(c => c.id === p.colorId) || COLOR_PALETTE[0];
+        const isGood = goodRoles.includes(p.role);
+        const campColor = isGood ? 'text-blue-400 border-blue-800/70 bg-blue-950/40' : 'text-rose-400 border-rose-800/70 bg-rose-950/40';
+        const campName = isGood ? '好人陣營' : '老朝奉陣營';
+
+        // 構建其 POV 與信念
+        const pov = BotDeductionEngine.buildPOV(room, p.id);
+        const beliefs = BotDeductionEngine.evaluateBeliefs(pov);
+
+        // 1. 各輪查驗事實
+        let inspectHtml = '';
+        if (pov.allMyInspectHistory && pov.allMyInspectHistory.length > 0) {
+          inspectHtml = pov.allMyInspectHistory.map(h => {
+            const resBadge = h.resultText.includes('真品')
+              ? '<span class="text-emerald-400 font-bold">[真品]</span>'
+              : (h.resultText.includes('贗品') ? '<span class="text-rose-400 font-bold">[贗品]</span>' : '<span class="text-neutral-400">[被偷襲]</span>');
+            return `<div class="text-[11px] text-neutral-300">• 第 ${h.round} 回合查驗【${h.beastName}】：${resBadge}</div>`;
+          }).join('');
+        } else {
+          inspectHtml = '<div class="text-[11px] text-neutral-500">無查驗紀錄</div>';
+        }
+
+        // 2. 各輪發言與博弈亮點
+        let speechesHtml = '';
+        (room.rounds || []).forEach((r, rIdx) => {
+          const spObj = (r.speeches || []).find(s => s.playerId === p.id);
+          if (spObj && spObj.speech) {
+            let tag = '';
+            if (spObj.speech.includes('我是方震！') && p.role !== '方震') {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-neutral-950 font-black ml-1">🛡️ 假跳方震Cover真神</span>';
+            } else if (spObj.speech.includes('我是方震！') && p.role === '方震') {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500 text-neutral-950 font-black ml-1">⚡ 真方震公審</span>';
+            } else if (spObj.speech.includes('我就是老朝奉！')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-purple-500 text-neutral-100 font-black ml-1">🎭 跳老朝奉打反反心態</span>';
+            } else if (spObj.speech.includes('被偷襲') || spObj.speech.includes('一片黑')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-neutral-100 font-black ml-1">💢 偷襲控訴</span>';
+            } else if (spObj.speech.includes('身為尾家') || spObj.speech.includes('歸票')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-600 text-neutral-950 font-black ml-1">🎯 尾家歸票</span>';
+            } else if (spObj.speech.includes('跟著投') || spObj.speech.includes('也跟票') || spObj.speech.includes('跟投')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-sky-500 text-neutral-950 font-black ml-1">🤝 真方震跟喊票 (融入人群)</span>';
+            } else if (spObj.speech.includes('微表情') || spObj.speech.includes('大膽瞎猜') || spObj.speech.includes('直覺')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500 text-neutral-100 font-black ml-1">🎲 真方震自信瞎猜 (試探反應)</span>';
+            } else if (spObj.speech.includes('老朝奉的人') || spObj.speech.includes('老朝奉那邊的') || spObj.speech.includes('幫老朝奉做事')) {
+              tag = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-rose-600 text-neutral-100 font-black ml-1">🎭 許願反串跳壞人 (擾亂老朝奉)</span>';
+            }
+
+            speechesHtml += `
+              <div class="text-[11px] bg-neutral-950 p-2 rounded border border-neutral-800/80 space-y-1">
+                <div class="flex items-center justify-between text-neutral-400">
+                  <span>第 ${rIdx + 1} 回合發言 ${tag}</span>
+                </div>
+                <div class="text-neutral-200 italic">“${spObj.speech}”</div>
+              </div>
+            `;
+          }
+        });
+
+        // 3. 終局鑑人決策推導
+        const targetId = (room.personVotes || {})[p.id];
+        const targetP = (room.players || []).find(x => x.id === targetId);
+        const tc = targetP ? (COLOR_PALETTE.find(c => c.id === targetP.colorId) || COLOR_PALETTE[0]) : null;
+
+        let rationale = '';
+        if (isGood) {
+          if (targetP) {
+            const tBelief = beliefs.roleScores[targetP.id];
+            if (tBelief && tBelief.caughtLying) {
+              rationale = `比對親身查驗記憶發現【${targetP.name}】曾將贗品宣傳為真品，存在直接重大謊言，因此鎖定為老朝奉主要嫌疑人。`;
+            } else if (tBelief && tBelief.claimedRole === '方震') {
+              rationale = `場上有好人跳出指控【${targetP.name}】，採信該情資並凝聚票源投票。`;
+            } else {
+              rationale = `綜合分析全場發言態度與投票偏向，【${targetP.name}】的行為模式最符合老朝奉擾亂特徵。`;
+            }
+          } else {
+            rationale = `依局勢直覺投票。`;
+          }
+        } else if (p.role === '老朝奉') {
+          rationale = targetP
+            ? `排除隊友（藥不然、鄭國渠），【${targetP.name}】多次查驗雙件獸首且發言高度自信，特徵最吻合許願，故指認其為許願。`
+            : `依局勢指認許願。`;
+        } else if (p.role === '藥不然') {
+          rationale = targetP
+            ? `尋找「真正驗不到的人」：追蹤受偷襲致盲者與發言避重就輕、跟喊瞎猜者，鎖定【${targetP.name}】為方震（排除假跳干擾）。`
+            : `依局勢指認方震。`;
+        } else {
+          rationale = targetP
+            ? `身為老朝奉陣營，【絕對不投老朝奉】，投票給【${targetP.name}】以混淆視聽並分散好人票源。`
+            : `協助混淆視聽。`;
+        }
+
+        const voteTargetHtml = targetP
+          ? `<span class="font-bold text-amber-300">投給：${tc ? tc.name : ''}色 ${targetP.name} (身分: ${targetP.role})</span>`
+          : `<span class="text-neutral-500">未完成投票</span>`;
+
+        container.innerHTML += `
+          <details class="bg-neutral-950/90 border border-neutral-800 rounded-xl overflow-hidden group shadow-md" ${idx === 0 ? 'open' : ''}>
+            <summary class="p-3 cursor-pointer flex items-center justify-between hover:bg-neutral-900 transition select-none">
+              <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full ${pc.dotClass} border"></span>
+                <span class="font-bold text-neutral-100">${pc.name}色 ${p.name}</span>
+                <span class="text-[11px] px-2 py-0.5 rounded border font-bold ${campColor}">【${p.role}】${campName}</span>
+              </div>
+              <span class="text-[11px] text-amber-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+            </summary>
+            <div class="p-3 border-t border-neutral-800/80 bg-neutral-900/50 space-y-2.5 text-xs">
+              <div class="space-y-1">
+                <div class="font-bold text-neutral-400 flex items-center space-x-1">
+                  <span>🔍</span><span>眼見紀錄（個人歷史記憶）：</span>
+                </div>
+                <div class="pl-4 space-y-0.5">${inspectHtml}</div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="font-bold text-neutral-400 flex items-center space-x-1">
+                  <span>🗣️</span><span>發言思維與心理博弈：</span>
+                </div>
+                <div class="space-y-1.5 pl-1">${speechesHtml}</div>
+              </div>
+
+              <div class="space-y-1 pt-1 border-t border-neutral-800/60">
+                <div class="font-bold text-neutral-300 flex items-center justify-between">
+                  <div class="flex items-center space-x-1"><span>🎯</span><span>終局鑑人決策：</span></div>
+                  <div>${voteTargetHtml}</div>
+                </div>
+                <div class="text-[11px] text-neutral-300 bg-neutral-950 p-2 rounded border border-neutral-800/80 leading-relaxed">
+                  ${rationale}
+                </div>
+              </div>
+            </div>
+          </details>
+        `;
+      });
     }
 
     async function resetOnlineRoom() {
@@ -8457,6 +9303,7 @@ container.appendChild(row);
         const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];
         usedColors.add(availColor.id);
 
+        const dna = BotDeductionEngine.generateBotDNA('mock_p_' + (players.length + 1), '');
         players.push({
           id: 'mock_p_' + (players.length + 1),
           name: n,
@@ -8468,7 +9315,10 @@ container.appendChild(row);
           roleConfirmed: true,
           isAmbushed: false,
           isPermanentlyAmbushed: false,
-          confusedRound: null
+          confusedRound: null,
+          actionDNA: dna.actionDNA,
+          speechDNA: dna.speechDNA,
+          personaTitle: dna.personaTitle
         });
       }
 
@@ -8481,9 +9331,9 @@ container.appendChild(row);
     /* ============================================================
        線上版 虛擬玩家 (AI) 託管行動與討論/投票推進引擎
        ============================================================ */
-    let _lastMockActionTime = 0;
-    let _mockActionPending = false;
-    let _lastWatchdogDiscussionCheck = 0;
+    _lastMockActionTime = _lastMockActionTime || 0;
+    _mockActionPending = _mockActionPending || false;
+    _lastWatchdogDiscussionCheck = _lastWatchdogDiscussionCheck || 0;
 
     function clearBotSafetyWatchdog() {
       _mockActionPending = false;
@@ -8838,13 +9688,21 @@ container.appendChild(row);
           const mockP = freshRoom.players.find(p => p.id === mockPlayerId);
           if (!mockP) return;
 
+          if (!mockP.actionDNA) {
+            const dna = BotDeductionEngine.generateBotDNA(mockPlayerId, mockP.role);
+            mockP.actionDNA = dna.actionDNA;
+            mockP.speechDNA = dna.speechDNA;
+            mockP.personaTitle = dna.personaTitle;
+          }
+
           if (!roundObj.turnLogs) roundObj.turnLogs = {};
           if (!roundObj.turnLogs[mockPlayerId]) roundObj.turnLogs[mockPlayerId] = {};
 
-          const beasts = [...roundObj.beasts];
-          const isUnderAmbush = mockP.isAmbushed || mockP.isPermanentlyAmbushed;
-          const count = (mockP.role === '許願' && !isUnderAmbush) ? 2 : 1;
-          const chosen = beasts.sort(() => 0.5 - Math.random()).slice(0, count);
+          const botPOV = BotDeductionEngine.buildPOV(freshRoom, mockPlayerId);
+          const beliefs = BotDeductionEngine.evaluateBeliefs(botPOV);
+
+          const chosen = BotDeductionEngine.decideInspect(botPOV, beliefs, roundObj.beasts);
+          const isUnderAmbush = botPOV.myInspectWasBlinded;
 
           roundObj.turnLogs[mockPlayerId].inspect = chosen.map(b => {
             let txt = '';
@@ -8852,6 +9710,8 @@ container.appendChild(row);
               txt = `【${b.name}】 看不懂???`;
             } else if (isUnderAmbush) {
               txt = '獸首被偷襲';
+            } else if (roundObj.blockedBeast === b.name) {
+              txt = `【${b.name}】 無法辨別真偽！`;
             } else {
               let isReal = b.isReal;
               const immuneToLao = ['姬雲浮', '老朝奉', '藥不然', '鄭國渠'].includes(mockP.role);
@@ -8861,19 +9721,21 @@ container.appendChild(row);
             return { beastName: b.name, resultText: txt, actualIsReal: b.isReal };
           });
 
-          roundObj.turnLogs[mockPlayerId].ability = '已完成能力行動';
+          const skillResult = BotDeductionEngine.decideSkill(botPOV, beliefs, freshRoom, roundObj);
+          Object.assign(roundObj.turnLogs[mockPlayerId], skillResult);
 
           const passOrder = roundObj.passOrder || [];
           const uninspected = freshRoom.players.filter(p => !passOrder.includes(p.id));
 
           if (uninspected.length > 0) {
-            const nextP = uninspected[Math.floor(Math.random() * uninspected.length)];
+            const nextP = BotDeductionEngine.decidePassNext(botPOV, beliefs, uninspected);
             passOrder.push(nextP.id);
             roundObj.passOrder = passOrder;
 
             await db.doc(ONLINE_ROOM_DOC).update({
               currentTurnPlayerId: nextP.id,
               rounds: freshRoom.rounds,
+              players: freshRoom.players,
               lastActivityTime: Date.now()
             });
           } else {
@@ -8881,7 +9743,7 @@ container.appendChild(row);
             await executeOnlineAdvanceToDiscussion(freshRoom);
           }
         } catch(e) {
-          console.error('虛擬玩家查驗失敗:', e);
+          console.error('虛擬玩家查驗推演失敗:', e);
         } finally {
           _mockActionPending = false;
         }
@@ -8896,7 +9758,7 @@ container.appendChild(row);
       const mockP = (room.players || []).find(p => p.id === mockSpeakerId);
       const speakerBadge = document.getElementById('onlCurrentSpeakerBadge');
       if (mockP && speakerBadge) {
-        speakerBadge.innerHTML = `<span class="text-amber-400 font-bold animate-pulse font-mono">🤖 電腦玩家【${mockP.name}】思考中...</span>`;
+        speakerBadge.innerHTML = `<span class="text-amber-400 font-bold animate-pulse font-mono">🤖 電腦玩家【${mockP.name} ${mockP.personaTitle || ''}】思考中...</span>`;
       }
 
       const delay = 1200 + Math.floor(Math.random() * 800);
@@ -8911,40 +9773,20 @@ container.appendChild(row);
           const roundObj = freshRoom.rounds[freshRoom.currentRoundIdx];
           if (!roundObj) return;
 
-          const mockP = freshRoom.players.find(p => p.id === mockSpeakerId);
-          if (!mockP) return;
+          const freshMockP = freshRoom.players.find(p => p.id === mockSpeakerId);
+          if (!freshMockP) return;
 
           if (!roundObj.speeches) roundObj.speeches = [];
 
-          const isEvilCamp = ['老朝奉', '藥不然', '鄭國渠'].includes(mockP.role);
-          let speechText = '';
-          if (isEvilCamp) {
-            const evilSpeeches = [
-              '前面幾位的發言聽起來有點可疑，大家可別輕信啊。',
-              '我查驗到的感覺是真品，但我建議大家分散投票比較穩妥。',
-              '這隻獸首真偽有點爭議，大家不妨多觀察一下其他人的票型。',
-              '我覺得現在票數很關鍵，好人千萬別把票投散了，跟著我投就對了。',
-              '依我看，某幾個人的查驗結果互相矛盾，裡面肯定有老朝奉的人！',
-              '我查驗的結果跟大家不太一樣，可能有人在說謊喔。'
-            ];
-            speechText = evilSpeeches[Math.floor(Math.random() * evilSpeeches.length)];
-          } else {
-            const goodSpeeches = [
-              '我這回合查驗到的獸首是真品，大家投票時可以多加參考！',
-              '我覺得局勢挺微妙的，大家投票時務必謹慎，別被老朝奉帶偏。',
-              '我查驗的獸首是假貨，投票時強烈建議避開！',
-              '聽了前面幾位的分析，推論滿合理的，好人陣營這輪要團結投票。',
-              '這把一定要算好第二名的票數，避免壞人順利攪局！',
-              '我對自己查驗很有信心，待會投票我會投給確定是真品的那隻。'
-            ];
-            speechText = goodSpeeches[Math.floor(Math.random() * goodSpeeches.length)];
-          }
+          const botPOV = BotDeductionEngine.buildPOV(freshRoom, mockSpeakerId);
+          const beliefs = BotDeductionEngine.evaluateBeliefs(botPOV);
+          const speechText = BotDeductionEngine.generateSpeech(botPOV, beliefs);
 
           roundObj.speeches.push({
             playerId: mockSpeakerId,
             speakerId: mockSpeakerId,
-            speakerName: mockP.name,
-            colorId: mockP.colorId,
+            speakerName: `${freshMockP.name} ${freshMockP.personaTitle || ''}`.trim(),
+            colorId: freshMockP.colorId,
             text: speechText,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           });
@@ -8975,7 +9817,7 @@ container.appendChild(row);
             }
           }
           clearBotSafetyWatchdog();
-          showToast(`🤖 電腦玩家【${mockP.name}】已發言`, 'info', 1800);
+          showToast(`🤖 電腦玩家【${freshMockP.name}】已發言`, 'info', 1800);
         } catch(e) {
           console.error('虛擬玩家發言失敗:', e);
         } finally {
@@ -9003,16 +9845,11 @@ container.appendChild(row);
           if (!roundObj.votes) roundObj.votes = {};
           if (roundObj.votes[mockPlayerId]) return;
 
-          const beasts = roundObj.beasts || [];
-          const voteMap = {};
-          beasts.forEach(b => { voteMap[b.name] = 0; });
+          const maxVotes = getOnlineMyAvailableVotes(roundObj.roundNum);
 
-          if (beasts.length > 0) {
-            for (let i = 0; i < 2; i++) {
-              const pick = beasts[Math.floor(Math.random() * beasts.length)].name;
-              voteMap[pick] = (voteMap[pick] || 0) + 1;
-            }
-          }
+          const botPOV = BotDeductionEngine.buildPOV(freshRoom, mockPlayerId);
+          const beliefs = BotDeductionEngine.evaluateBeliefs(botPOV);
+          const voteMap = BotDeductionEngine.decideVote(botPOV, beliefs, maxVotes, roundObj.beasts);
 
           roundObj.votes[mockPlayerId] = { ...voteMap };
 
@@ -9051,8 +9888,10 @@ container.appendChild(row);
 
           const candidates = freshRoom.players.filter(p => p.id !== mockPlayerId);
           if (candidates.length > 0) {
-            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-            freshRoom.personVotes[mockPlayerId] = chosen.id;
+            const botPOV = BotDeductionEngine.buildPOV(freshRoom, mockPlayerId);
+            const beliefs = BotDeductionEngine.evaluateBeliefs(botPOV);
+            const chosenId = BotDeductionEngine.decidePersonVote(botPOV, beliefs, candidates);
+            freshRoom.personVotes[mockPlayerId] = chosenId || candidates[0].id;
           }
 
           const allVotedCount = (freshRoom.players || []).filter(p => freshRoom.personVotes && freshRoom.personVotes[p.id]).length;
@@ -9084,7 +9923,7 @@ container.appendChild(row);
     function triggerMockPlayerSpeech(room, sId) {
       if (!room || !sId || !room.rounds) return;
       const hostId = (room && room.hostId) ? room.hostId : getRoomHostId(room);
-      if (hostId !== myOnlinePlayerId) return; // 僅首位真人/房主驅動
+      if (hostId !== myOnlinePlayerId) return;
 
       if (_mockActionPending) return;
       const curR = room.rounds[room.currentRoundIdx];
@@ -9134,7 +9973,7 @@ container.appendChild(row);
 
     function loadTasteSettings() {
       try {
-        const saved = JSON.parse(localStorage.getItem(TASTE_STORAGE_KEY) || 'null');
+        const saved = JSON.parse((function(){ try { return localStorage.getItem(TASTE_STORAGE_KEY); } catch(e){ return null; } })() || 'null');
         if (saved) {
           currentTaste = { ...currentTaste, ...saved };
         }
@@ -9254,8 +10093,8 @@ container.appendChild(row);
     }
     window.syncTasteUIControls = syncTasteUIControls;
 
-    let _localRoleCardOpen = false;
-    let _localRoleRevealWaitingHandover = true;
+    var _localRoleCardOpen = false;
+    var _localRoleRevealWaitingHandover = true;
 
     function enterRoleRevealCardView() {
       _localRoleRevealWaitingHandover = false;
