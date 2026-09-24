@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v2.1.8)</title>  
+ <title>古董局中局 (v2.1.9)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -354,7 +354,7 @@
   
  <!-- 測試與除錯輔助 (快速填滿7位電腦玩家方便單人測試) -->  
  <div class="pt-2 flex justify-between items-center text-[10px] text-neutral-500 border-t border-neutral-800/80">  
- <button type="button" onclick="addMockPlayersToLobby()" class="hover:text-amber-400 underline">🤖 塞滿電腦玩家</button>  
+ <button type="button" onclick="addMockPlayersToLobby()" class="hover:text-amber-400 underline font-bold">🤖 補滿電腦玩家至8人</button>  
  <button type="button" onclick="closeOnlineRoom()" class="hover:text-rose-400 underline">🚪 關閉房間</button>  
  </div>  
   
@@ -4858,80 +4858,77 @@ async function kickOnlinePlayer(targetId, event) {
   
  // 關鍵修復：若已被房主或他人踢出，絕不可自動入座！  
  if (room && room.kickedPlayerIds && room.kickedPlayerIds.includes(myOnlinePlayerId)) {  
- return;  
+   return;  
  }  
  if (room && room.kickStats && room.kickStats[myOnlinePlayerId]) {  
- const ks = room.kickStats[myOnlinePlayerId];  
- if (ks.lockedUntil && Date.now() < ks.lockedUntil) {  
- return;  
- }  
+   const ks = room.kickStats[myOnlinePlayerId];  
+   if (ks.lockedUntil && Date.now() < ks.lockedUntil) {  
+     return;  
+   }  
  }  
   
  const docRef = db.doc(ONLINE_ROOM_DOC);  
   
  try {  
- let players = room && room.players ? [...room.players] : [];  
- if (players.some(p => p.id === myOnlinePlayerId)) return;  
- if (players.length >= 8) return;  
+   await db.runTransaction(async (transaction) => {
+     const snap = await transaction.get(docRef);
+     if (!snap.exists) return;
+     const data = snap.data();
+     if (data.status !== 'waiting') return;
+
+     let players = data.players ? [...data.players] : [];
+     if (players.some(p => p.id === myOnlinePlayerId)) return;
+
+     // 關鍵修復：若房間已有 8 人但名單內包含電腦虛擬玩家 (mock_p_)，真實玩家自動替換掉最後一位電腦玩家！
+     if (players.length >= 8) {
+       let mockIdx = -1;
+       for (let i = players.length - 1; i >= 0; i--) {
+         if (players[i].id && players[i].id.startsWith('mock_p_')) {
+           mockIdx = i;
+           break;
+         }
+       }
+       if (mockIdx !== -1) {
+         players.splice(mockIdx, 1);
+       } else {
+         return; // 全是真人且已滿 8 人，無法加入
+       }
+     }
+
+     const usedColors = new Set(players.map(p => p.colorId));  
+     const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];  
   
- const usedColors = new Set(players.map(p => p.colorId));  
- const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];  
+     const usedSeats = new Set(players.map(p => p.seatIndex));  
+     let availSeat = 0;  
+     for (let s = 0; s < 8; s++) {  
+       if (!usedSeats.has(s)) {  
+         availSeat = s;  
+         break;  
+       }  
+     }  
   
- const usedSeats = new Set(players.map(p => p.seatIndex));  
- let availSeat = 0;  
- for (let s = 0; s < 8; s++) {  
- if (!usedSeats.has(s)) {  
- availSeat = s;  
- break;  
- }  
- }  
+     const repChar = getRepresentativeChar(myOnlinePlayerName);  
+     const newPlayer = {  
+       id: myOnlinePlayerId,  
+       name: myOnlinePlayerName,  
+       repChar: repChar,  
+       colorId: availColor.id,  
+       seatIndex: availSeat,  
+       readyToStart: false,  
+       role: '',  
+       roleConfirmed: false,  
+       isAmbushed: false,  
+       isPermanentlyAmbushed: false,  
+       confusedRound: null  
+     };  
   
- const repChar = getRepresentativeChar(myOnlinePlayerName);  
- const newPlayer = {  
- id: myOnlinePlayerId,  
- name: myOnlinePlayerName,  
- repChar: repChar,  
- colorId: availColor.id,  
- seatIndex: availSeat,  
- readyToStart: false,  
- role: '',  
- roleConfirmed: false,  
- isAmbushed: false,  
- isPermanentlyAmbushed: false,  
- confusedRound: null  
- };  
-  
- players.push(newPlayer);  
- await docRef.update({ players: players });  
+     players.push(newPlayer);  
+     transaction.update(docRef, { players: players, lastActivityTime: Date.now() });  
+   });
  } catch (err) {  
- try {  
- const snap = await docRef.get();  
- if (snap.exists) {  
- let freshPlayers = snap.data().players || [];  
- if (!freshPlayers.some(p => p.id === myOnlinePlayerId) && freshPlayers.length < 8) {  
- const usedColors = new Set(freshPlayers.map(p => p.colorId));  
- const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[freshPlayers.length % 8];  
- freshPlayers.push({  
- id: myOnlinePlayerId,  
- name: myOnlinePlayerName,  
- repChar: getRepresentativeChar(myOnlinePlayerName),  
- colorId: availColor.id,  
- seatIndex: freshPlayers.length,  
- readyToStart: false,  
- role: '',  
- roleConfirmed: false,  
- isAmbushed: false,  
- isPermanentlyAmbushed: false,  
- confusedRound: null  
- });  
- await docRef.update({ players: freshPlayers });  
+   console.warn('autoJoinLobbySeats error:', err);
  }  
- }  
- } catch(e2) {  
- console.warn('autoJoinLobbySeats fallback warn:', e2);  
- }  
- }  
- }  
+}  
   
  var _lobbyWaitingTimeoutTimer = null;  
  function renderOnlineLobby(room, me) {  
@@ -5399,11 +5396,25 @@ async function kickOnlinePlayer(targetId, event) {
  });  
  players = Array.from(uniquePlayersMap.values()).slice(0, 8);  
   
- // 確保每位玩家都有 seatIndex (0..7)  
- players.forEach((p, idx) => {  
- if (p.seatIndex === undefined || p.seatIndex === null) {  
- p.seatIndex = idx;  
- }  
+ // 嚴格保證 8 位玩家恰好填滿 0, 1, 2, 3, 4, 5, 6, 7 席次，絕不重複且無任何空缺！  
+ const usedSeatSet = new Set();  
+ players.forEach(p => {  
+   if (p.seatIndex !== undefined && p.seatIndex !== null && p.seatIndex >= 0 && p.seatIndex < 8 && !usedSeatSet.has(p.seatIndex)) {  
+     usedSeatSet.add(p.seatIndex);  
+   } else {  
+     p.seatIndex = null;  
+   }  
+ });  
+ players.forEach(p => {  
+   if (p.seatIndex === null) {  
+     for (let s = 0; s < 8; s++) {  
+       if (!usedSeatSet.has(s)) {  
+         p.seatIndex = s;  
+         usedSeatSet.add(s);  
+         break;  
+       }  
+     }  
+   }  
  });  
   
  // 8 種角色嚴格洗牌 (Fisher-Yates 演算法，100% 隨機且絕對不重複)  
@@ -8136,15 +8147,16 @@ container.appendChild(row);
             }  
           }  
   
-          // 若下回合首家為電腦玩家 (AI)，房主或看門狗自動於 2 秒後協助推進 (進入下回合或鑑人)  
+          // 若下回合首家為電腦玩家 (AI)，房主於 2 秒自動推進；若房主離線或休眠，其他在線真人於 4.5 秒自癒推進！  
           if (nextStarterId && nextStarterId.startsWith('mock_p_')) {  
             const hostId = getRoomHostId(room);  
             const isHost = (hostId === myOnlinePlayerId);  
-            if (isHost && !window._autoAdvanceBotRoundTimer) {  
+            if (!window._autoAdvanceBotRoundTimer) {  
+              const delay = isHost ? 2000 : 4500;  
               window._autoAdvanceBotRoundTimer = setTimeout(async () => {  
                 window._autoAdvanceBotRoundTimer = null;  
                 await onlAdvanceNextRoundOrPersonVote();  
-              }, 2000);  
+              }, delay);  
             }  
           }  
  }  
@@ -9331,68 +9343,119 @@ container.appendChild(row);
       }
     }
 
-    // 單人測試輔助：快速補齊 7 位電腦玩家
+    // 線上房間電腦補齊（原子交易＋嚴格席次去重，保證剛好 8 人且絕不重複席次）
     async function addMockPlayersToLobby() {
-      if (!onlineRoomData) return;
-      let players = onlineRoomData.players ? [...onlineRoomData.players] : [];
-      const usedColors = new Set(players.map(p => p.colorId));
+      if (!myOnlinePlayerId || !isFirebaseReady || !db) return;
+      const docRef = db.doc(ONLINE_ROOM_DOC);
 
-      // 1. 確保真實玩家自己在名單內，且設為已就緒
-      let me = players.find(p => p.id === myOnlinePlayerId);
-      if (!me) {
-        const myName = myOnlinePlayerName || '玩家 1';
-        const rep = getRepresentativeChar(myName);
-        const myColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[0];
-        usedColors.add(myColor.id);
-        me = {
-          id: myOnlinePlayerId,
-          name: myName,
-          repChar: rep,
-          colorId: myColor.id,
-          seatIndex: players.length,
-          readyToStart: true,
-          role: '',
-          roleConfirmed: true,
-          isAmbushed: false,
-          isPermanentlyAmbushed: false,
-          confusedRound: null
-        };
-        players.push(me);
-      } else {
-        me.readyToStart = true;
-      }
+      try {
+        await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(docRef);
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.status !== 'waiting') return;
 
-      // 2. 依序補滿直到剛好 8 人整！
-      const mockPool = ['小菜', '小舅', '嗩吶', '山濤', '蝦子', 'RAY', '凡', '老張', '大雄', '靜香'];
-      let mockIdx = 0;
+          let players = data.players ? [...data.players] : [];
+          const usedColors = new Set(players.map(p => p.colorId));
 
-      while (players.length < 8 && mockIdx < mockPool.length) {
-        const n = mockPool[mockIdx++];
-        if (players.some(p => p.name === n)) continue;
+          // 1. 確保操作的真人玩家本人在名單內，且設為已就緒
+          let me = players.find(p => p.id === myOnlinePlayerId);
+          if (!me) {
+            const myName = myOnlinePlayerName || '玩家 1';
+            const rep = getRepresentativeChar(myName);
+            const myColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[0];
+            usedColors.add(myColor.id);
+            me = {
+              id: myOnlinePlayerId,
+              name: myName,
+              repChar: rep,
+              colorId: myColor.id,
+              seatIndex: 0,
+              readyToStart: true,
+              role: '',
+              roleConfirmed: true,
+              isAmbushed: false,
+              isPermanentlyAmbushed: false,
+              confusedRound: null
+            };
+            players.push(me);
+          } else {
+            me.readyToStart = true;
+          }
 
-        const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];
-        usedColors.add(availColor.id);
+          // 2. 嚴格席次去重與正規化：保證現有所有玩家 (包含所有在線真人) 席次有效不衝突
+          const seatSet = new Set();
+          players.forEach(p => {
+            if (p.seatIndex !== undefined && p.seatIndex !== null && p.seatIndex >= 0 && p.seatIndex < 8 && !seatSet.has(p.seatIndex)) {
+              seatSet.add(p.seatIndex);
+            } else {
+              p.seatIndex = null;
+            }
+          });
+          players.forEach(p => {
+            if (p.seatIndex === null) {
+              for (let s = 0; s < 8; s++) {
+                if (!seatSet.has(s)) {
+                  p.seatIndex = s;
+                  seatSet.add(s);
+                  break;
+                }
+              }
+            }
+          });
 
-        const dna = BotDeductionEngine.generateBotDNA('mock_p_' + (players.length + 1), '');
-        players.push({
-          id: 'mock_p_' + (players.length + 1),
-          name: n,
-          repChar: getRepresentativeChar(n),
-          colorId: availColor.id,
-          seatIndex: players.length,
-          readyToStart: true,
-          role: '',
-          roleConfirmed: true,
-          isAmbushed: false,
-          isPermanentlyAmbushed: false,
-          confusedRound: null,
-          actionDNA: dna.actionDNA,
-          speechDNA: dna.speechDNA,
-          personaTitle: dna.personaTitle
+          // 3. 依序補滿直到剛好 8 人整！
+          const mockPool = ['小菜', '小舅', '嗩吶', '山濤', '蝦子', 'RAY', '凡', '老張', '大雄', '靜香'];
+          const usedNames = new Set(players.map(p => p.name));
+          let mockIdx = 0;
+
+          while (players.length < 8 && mockIdx < mockPool.length) {
+            const n = mockPool[mockIdx++];
+            if (usedNames.has(n)) continue;
+
+            const availColor = COLOR_PALETTE.find(c => !usedColors.has(c.id)) || COLOR_PALETTE[players.length % 8];
+            usedColors.add(availColor.id);
+            usedNames.add(n);
+
+            let availSeat = 0;
+            for (let s = 0; s < 8; s++) {
+              if (!seatSet.has(s)) {
+                availSeat = s;
+                seatSet.add(s);
+                break;
+              }
+            }
+
+            const botId = 'mock_p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+            const dna = BotDeductionEngine.generateBotDNA(botId, '');
+            players.push({
+              id: botId,
+              name: n,
+              repChar: getRepresentativeChar(n),
+              colorId: availColor.id,
+              seatIndex: availSeat,
+              readyToStart: true,
+              isReady: true,
+              role: '',
+              roleConfirmed: true,
+              isAmbushed: false,
+              isPermanentlyAmbushed: false,
+              confusedRound: null,
+              actionDNA: dna.actionDNA,
+              speechDNA: dna.speechDNA,
+              personaTitle: dna.personaTitle
+            });
+          }
+
+          transaction.update(docRef, {
+            players: players,
+            lastActivityTime: Date.now()
+          });
         });
+        showToast('🤖 已補齊電腦玩家至 8 人滿員！', 'success', 2000);
+      } catch(e) {
+        console.error('補齊電腦玩家失敗:', e);
       }
-
-      await db.doc(ONLINE_ROOM_DOC).update({ players: players });
     }
 
 
@@ -9674,9 +9737,20 @@ container.appendChild(row);
       if (currentAppMode !== 'online' || !onlineRoomData || !myOnlinePlayerId || !isFirebaseReady || !db) return;
       const room = onlineRoomData;
 
-      // 房內首位真人負責驅動電腦
-      const firstHuman = (room.players || []).find(p => p.id && !p.id.startsWith('mock_p_'));
-      if (firstHuman && firstHuman.id !== myOnlinePlayerId) return;
+      // 房內真人負責驅動電腦（第一順位真人優先；若第一順位超時 4 秒未動作，第二順位真人自動自癒接管）
+      const humanPlayers = (room.players || []).filter(p => p.id && !p.id.startsWith('mock_p_'));
+      const firstHuman = humanPlayers[0];
+      const nowTs = Date.now();
+      const lastActiveTs = room.lastActivityTime || nowTs;
+      const isLeaderDead = (nowTs - lastActiveTs > 4000);
+
+      let amIDriver = false;
+      if (firstHuman && firstHuman.id === myOnlinePlayerId) {
+        amIDriver = true;
+      } else if (isLeaderDead && humanPlayers.length > 1 && humanPlayers[1].id === myOnlinePlayerId) {
+        amIDriver = true;
+      }
+      if (!amIDriver) return;
 
       const curRoundIdx = (room.currentRoundIdx !== undefined) ? room.currentRoundIdx : 0;
       const curRound = room.rounds ? room.rounds[curRoundIdx] : null;
