@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v2.3.1)</title>  
+ <title>古董局中局 (v2.3.6)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -2173,6 +2173,17 @@ class BotDeductionEngine {
       }
     });
 
+    const roundNumForMe = curRoundIdx + 1;
+    const totalGrantedForMe = 2 * roundNumForMe;
+    let totalUsedInPriorForMe = 0;
+    (room.rounds || []).forEach((r, rIdx) => {
+      if (rIdx < curRoundIdx && r.votes && r.votes[botId]) {
+        const ballot = r.votes[botId];
+        totalUsedInPriorForMe += Object.values(ballot).reduce((a, b) => a + (parseInt(b) || 0), 0);
+      }
+    });
+    const myAvailableVotes = Math.max(0, totalGrantedForMe - totalUsedInPriorForMe);
+
     const fangZhenInspections = [];
     (room.rounds || []).forEach((r, rIdx) => {
       const tLog = r.turnLogs && r.turnLogs[botId];
@@ -2227,9 +2238,11 @@ class BotDeductionEngine {
       passOrders: (room.rounds || []).map(r => r.passOrder || []),
       speeches: (room.rounds || []).map(r => r.speeches || []),
       voteResults: (room.rounds || []).map(r => r.voteResults || null),
+      pastVotes: (room.rounds || []).map(r => r.votes || {}),
       myInspectLogs: myCurrentInspect,
       allMyInspectHistory: allMyInspectHistory,
       myAbilityLog: (curRound.turnLogs && curRound.turnLogs[botId] && curRound.turnLogs[botId].ability) || '',
+      myAvailableVotes: myAvailableVotes,
       fangZhenInspections: fangZhenInspections,
       yaoPastAmbushedTargets: yaoPastAmbushedTargets,
       otherPlayers: filteredPlayers,
@@ -2264,6 +2277,7 @@ class BotDeductionEngine {
         roleScores[p.id] = {
           xuYuan: 10 + (Math.random() * 10 - 5),
           fangZhen: 10 + (Math.random() * 10 - 5),
+          jiYunFu: 10 + (Math.random() * 10 - 5),
           laoChaoFeng: 10 + (Math.random() * 10 - 5),
           zhengGuoQu: 10 + (Math.random() * 10 - 5),
           credibility: 1.0,
@@ -2374,7 +2388,19 @@ class BotDeductionEngine {
           }
         }
 
-        // 藥不然尋找「真正驗不到的人」
+        // 依使用者規則：藥不然評估尋找方震，以及「看起來像姬雲浮的玩家」，避免姬雲浮活到第三回合讓好人穩拿分！
+        const claimsJi = text.includes('我是姬雲浮') || text.includes('我才是姬雲浮') || text.includes('我就是姬雲浮') || text.includes('不受老朝奉擾亂');
+        const strongRealConfidence = text.includes('性命擔保') || text.includes('百分之百真品') || text.includes('保真') || text.includes('無懈可擊');
+        if (claimsJi) {
+          c.jiYunFu += 35;
+        }
+        if (strongRealConfidence && !c.caughtLying) {
+          c.jiYunFu += 18;
+        }
+        if (uniqueBeasts.length === 1 && !isBlindGuess && !isFollowCall) {
+          c.jiYunFu += 8; // 姬雲浮每回合專注驗 1 隻且篤定
+        }
+
         if (pov.myRole === '藥不然') {
           if (isFollowCall || isBlindGuess) {
             c.fangZhen += 26; // 方震精力在玩家身上，獸首往往跟喊或瞎猜
@@ -2455,10 +2481,17 @@ class BotDeductionEngine {
     if (pov.myRole === '藥不然') {
       const candidates = pov.otherPlayers.filter(p => p.id !== pov.myId && !pov.knownTeammateIds.includes(p.id));
       if (candidates.length === 0) return { ability: '跳過不偷襲', abilityLocked: true };
+
+      // 依使用者規則：電腦藥不然評估嘗試去偷那些「看起來像姬雲浮的玩家」，避免姬雲浮活到第三回合可能讓好人穩拿一分！
+      // 同時綜合評估方震威脅度，選出對壞人威脅最大的神職目標進行偷襲致盲！
+      const curRoundIdx = (typeof pov.currentRoundIdx === 'number') ? pov.currentRoundIdx : 0;
       const sorted = candidates.sort((a, b) => {
-        const sA = beliefs.roleScores[a.id] ? beliefs.roleScores[a.id].fangZhen : 10;
-        const sB = beliefs.roleScores[b.id] ? beliefs.roleScores[b.id].fangZhen : 10;
-        return sB - sA;
+        const bA = beliefs.roleScores[a.id] || { fangZhen: 10, jiYunFu: 10 };
+        const bB = beliefs.roleScores[b.id] || { fangZhen: 10, jiYunFu: 10 };
+        const jiWeight = (curRoundIdx >= 1) ? 1.25 : 1.05;
+        const threatA = Math.max(bA.fangZhen || 10, (bA.jiYunFu || 10) * jiWeight);
+        const threatB = Math.max(bB.fangZhen || 10, (bB.jiYunFu || 10) * jiWeight);
+        return threatB - threatA;
       });
       let targetId = sorted[0].id;
 
@@ -2554,12 +2587,18 @@ class BotDeductionEngine {
 
   // 鑑寶投票核心升級：好人全力投真品、壞人全力投贗品，不盲目分票，參考他人發言共識！
   // 鑑寶投票決策升級（依需求 5：好人努力依查驗與發言推測真品並依把握度投票；壞人努力依查驗與發言推測贗品並依把握度投票，努力幫贗品拉票）
+  // 查驗獸首投票策略：依使用者規則全面升級 (v2.3.6)
+  // 1. 每回合只會多2票，未投票者籌碼累積至下一回合 (嚴格扣除前幾輪已用票數)
+  // 2. 被偷襲致盲或沒驗到想驗者低把握，但可用前面玩家發言去推測
+  // 3. 置位太後面懷疑老朝奉在前面開技能擾亂反轉，就算驗到贗品也可以投看看
+  // 4. 第二回合票很多時，可直接 All-in 前面置位的獸首阻止壞人衝贗品
+  // 5. 投票本身也是給資訊的一種，都不投觀感偏灰色地帶，大幅降低全棄票(0票)機率，通常至少投1票表態
   static decideVote(pov, beliefs, param3, param4) {
     let beasts = [];
-    let maxVotes = 2;
+    let maxVotes = (pov && typeof pov.myAvailableVotes === 'number') ? pov.myAvailableVotes : 2;
 
     if (typeof param3 === 'number') {
-      maxVotes = param3 || 2;
+      maxVotes = Math.min(param3, (pov && typeof pov.myAvailableVotes === 'number') ? pov.myAvailableVotes : param3);
       if (Array.isArray(param4)) beasts = param4;
       else if (pov && pov.roundBeastsObj && pov.roundBeastsObj.length > 0) beasts = pov.roundBeastsObj;
       else if (pov && pov.currentBeasts && pov.currentBeasts.length > 0) {
@@ -2567,7 +2606,9 @@ class BotDeductionEngine {
       }
     } else if (Array.isArray(param3)) {
       beasts = param3;
-      if (typeof param4 === 'number') maxVotes = param4;
+      if (typeof param4 === 'number') {
+        maxVotes = Math.min(param4, (pov && typeof pov.myAvailableVotes === 'number') ? pov.myAvailableVotes : param4);
+      }
     } else {
       if (pov && pov.roundBeastsObj && pov.roundBeastsObj.length > 0) beasts = pov.roundBeastsObj;
       else if (pov && pov.currentBeasts && pov.currentBeasts.length > 0) {
@@ -2575,50 +2616,92 @@ class BotDeductionEngine {
       }
     }
 
+    if (maxVotes <= 0) return {};
+
     if (!beasts || beasts.length === 0) {
       beasts = (pov && pov.currentBeasts && pov.currentBeasts.length > 0)
         ? pov.currentBeasts.map(name => ({ name: name, isReal: true }))
         : [{ name: '目標1', isReal: true }, { name: '目標2', isReal: false }];
     }
 
+    const curRoundIdx = (pov && typeof pov.currentRoundIdx === 'number') ? pov.currentRoundIdx : 0;
+    const isFinalRound = (curRoundIdx === 2);
+
+    const passOrder = (pov && pov.passOrders && pov.passOrders[curRoundIdx]) ? pov.passOrders[curRoundIdx] : [];
+    const myPosIdx = (pov && pov.myId) ? passOrder.indexOf(pov.myId) : -1;
+    const isEarlyPosition = (myPosIdx >= 0 && myPosIdx <= 2);
+    const isLatePosition = (myPosIdx >= 3); // 置位在偏後段 (第4家之後)
+
     const voteMap = {};
 
     // -------------------------------------------------------------
-    // A. 好人陣營：全力依查驗事實與各色玩家發言推測真品，並依把握度投票！
+    // A. 好人陣營：依查驗、發言推測、置位與老朝奉擾亂懷疑綜合研判！
     // -------------------------------------------------------------
     if (pov.isGoodCamp) {
+      let hasConfirmedReal = false;
+      (pov.myInspectLogs || []).forEach(ins => {
+        if (!ins.resultText.includes('偷襲') && !ins.resultText.includes('一片黑')) {
+          if (ins.resultText.includes('真品')) hasConfirmedReal = true;
+        }
+      });
+      const isBlindedOrMissed = !!pov.myInspectWasBlinded || (pov.myInspectLogs || []).length === 0;
+
       const candidates = beasts.map(b => {
         const bName = b.name || b;
         const bs = (beliefs.beastScores && beliefs.beastScores[bName]) ? beliefs.beastScores[bName] : { real: 0, fake: 0 };
         const bm = (beliefs.beastMentions && beliefs.beastMentions[bName]) ? beliefs.beastMentions[bName] : { positiveVotes: 0, negativeVotes: 0, anchorRecommended: false };
 
-        // 親身查驗是最高權重的事實（真品 +60，贗品 -80）
         let myInspectBonus = 0;
         let isDirectlyInspectedReal = false;
         let isDirectlyInspectedFake = false;
+        let suspectLaoReversed = false;
+
         (pov.myInspectLogs || []).forEach(ins => {
           if (ins.beastName === bName && !ins.resultText.includes('偷襲') && !ins.resultText.includes('一片黑')) {
             if (ins.resultText.includes('真品')) {
               myInspectBonus += 60;
               isDirectlyInspectedReal = true;
             } else if (ins.resultText.includes('贗品')) {
-              myInspectBonus -= 80;
               isDirectlyInspectedFake = true;
+              // 依修正1：自己置位太後面，懷疑老朝奉在前面開技能，且前面玩家發言背書保真，就算驗到贗品也可以投看看！
+              // 檢查前面是否有其他玩家發言背書保真
+              let earlierSpeechEndorsed = false;
+              (pov.speeches && pov.speeches[curRoundIdx] || []).forEach(sp => {
+                if (sp.playerId !== pov.myId) {
+                  const t = sp.speech || sp.text || '';
+                  if ((t.includes('【' + bName + '】') || t.includes(bName)) && (t.includes('真品') || t.includes('保真'))) {
+                    earlierSpeechEndorsed = true;
+                  }
+                }
+              });
+              if (isLatePosition && earlierSpeechEndorsed) {
+                suspectLaoReversed = true;
+                myInspectBonus += 30; // 懷疑被老朝奉反轉，轉為正向潛在真品！
+              } else {
+                myInspectBonus -= 80;
+              }
             }
           }
         });
 
-        // 淨真品評分 (親身查驗 + 高信譽玩家發言加權 - 壞人帶風向扣分)
-        const netReal = bs.real - bs.fake + myInspectBonus;
-        // 把握度 (0.01 ~ 0.99)
+        // 扣除親眼查驗在 evaluateBeliefs 中帶入的 50 分，得到純粹來自「其他玩家發言」的評價
+        let otherSpeechesFake = bs.fake;
+        let otherSpeechesReal = bs.real;
+        if (isDirectlyInspectedFake && otherSpeechesFake >= 50) otherSpeechesFake -= 50;
+        if (isDirectlyInspectedReal && otherSpeechesReal >= 50) otherSpeechesReal -= 50;
+
+        const speechScore = otherSpeechesReal - otherSpeechesFake;
+        const netReal = speechScore + myInspectBonus;
         const probReal = Math.max(0.01, Math.min(0.99, (Math.max(0, netReal) + 10) / (Math.max(0, bs.real) + Math.max(0, bs.fake) + 20)));
 
         return {
           name: bName,
           netReal: netReal,
           probReal: probReal,
+          speechScore: speechScore,
           isDirectlyInspectedReal: isDirectlyInspectedReal,
           isDirectlyInspectedFake: isDirectlyInspectedFake,
+          suspectLaoReversed: suspectLaoReversed,
           anchorRecommended: bm.anchorRecommended
         };
       }).sort((a, b) => b.netReal - a.netReal);
@@ -2628,65 +2711,170 @@ class BotDeductionEngine {
       const topBeast = topCand.name;
       const secondBeast = secondCand.name;
 
-      // 把握度研判決策：
-      // 1. 若首選獸首把握度極高（親眼確認真品、或尾家歸票且遙遙領先）：好人將 2 票 All-in 集中灌注首選真品！
-      const isExtremeConfidence = topCand.isDirectlyInspectedReal || (topCand.probReal >= 0.75 && topCand.netReal >= secondCand.netReal + 20);
-      if (maxVotes >= 2 && isExtremeConfidence) {
-        voteMap[topBeast] = maxVotes;
+      // 依修正2：有些電腦玩家如果在第二回合覺得票很多 (maxVotes >= 3)，可以試著去阻止壞人衝贗品，
+      // 直接 all in (符合本輪可用票數公式) 在前面置位的獸首，去試圖贏過壞人衝置位較後面的贗品！
+      if (curRoundIdx === 1 && maxVotes >= 3 && Math.random() < 0.60) {
+        const frontBeastNames = beasts.slice(0, 2).map(b => b.name || b);
+        const frontCandidate = candidates.find(c => frontBeastNames.includes(c.name)) || topCand;
+        voteMap[frontCandidate.name] = maxVotes;
+        return typeof param3 === 'number' ? voteMap : Object.assign(Object.keys(voteMap), voteMap);
       }
-      // 2. 若前兩名把握度均高且接近（兩者皆為正向且非親驗贗品）：各投 1 票雙保真品
-      else if (maxVotes >= 2 && topBeast !== secondBeast && secondCand.netReal >= 0) {
+
+      // 檢查輿論是否有對沖撞車
+      const curRoundSpeeches = (pov.speeches && pov.speeches[curRoundIdx]) ? pov.speeches[curRoundIdx] : [];
+      let topHasClash = false;
+      let hasRealClaim = false;
+      let hasFakeClaim = false;
+      curRoundSpeeches.forEach(sp => {
+        const text = sp.speech || sp.text || '';
+        if (text.includes(`【${topBeast}】`)) {
+          if (text.includes('真品') || text.includes('保真')) hasRealClaim = true;
+          if (text.includes('贗品') || text.includes('假的')) hasFakeClaim = true;
+        }
+      });
+      if (hasRealClaim && hasFakeClaim) topHasClash = true;
+
+      // 把握度評估
+      let confidenceLevel = 'medium';
+      if (hasConfirmedReal) {
+        confidenceLevel = 'high';
+      } else if (topCand.suspectLaoReversed) {
+        confidenceLevel = 'medium';
+      } else if (isBlindedOrMissed) {
+        if (topCand.speechScore >= 20 && !topHasClash) {
+          confidenceLevel = 'medium';
+        } else {
+          confidenceLevel = 'low';
+        }
+      } else if (isEarlyPosition) {
+        if (topCand.probReal >= 0.70 && !topHasClash) confidenceLevel = 'medium';
+        else confidenceLevel = 'low';
+      } else {
+        if (topCand.probReal >= 0.75 && topCand.netReal >= secondCand.netReal + 15 && !topHasClash) {
+          confidenceLevel = 'high';
+        } else if (topCand.probReal >= 0.55 && !topHasClash) {
+          confidenceLevel = 'medium';
+        } else {
+          confidenceLevel = 'low';
+        }
+      }
+
+      // 依使用者修正1：並不是說0票（棄權）不好，而是在資訊不足時可以用極端打法！
+      // 玩法是活的：要嘛投票去賭一把 (投1或2票)，要嘛棄票保留籌碼拚第二或第三回合 (投0票)！
+      let votesToCast = 2;
+      if (!isFinalRound) {
+        if (confidenceLevel === 'low') {
+          // 資訊不足/沒驗到想驗的/置位很差時：
+          // 40% 極端棄票保留籌碼拚後盤 (0票)；35% 試探摸底表態 (1票)；25% 豪賭一把賭真品 (2票)
+          const r = Math.random();
+          if (r < 0.40) votesToCast = 0;
+          else if (r < 0.75) votesToCast = 1;
+          else votesToCast = 2;
+        } else if (confidenceLevel === 'medium') {
+          // 中等把握：60% 投 2 票，25% 投 1 票，15% 存票拚後盤 (0票)
+          const r = Math.random();
+          if (r < 0.15) votesToCast = 0;
+          else if (r < 0.40) votesToCast = 1;
+          else votesToCast = 2;
+        } else {
+          votesToCast = 2;
+        }
+      } else {
+        votesToCast = maxVotes;
+      }
+
+      votesToCast = Math.min(maxVotes, votesToCast);
+
+      if (votesToCast === 0) {
+        // 極少數保守保留籌碼
+      } else if (votesToCast === 1) {
         voteMap[topBeast] = 1;
-        voteMap[secondBeast] = 1;
-      }
-      // 3. 預設集中投入最高把握度真品
-      else {
-        voteMap[topBeast] = maxVotes;
+      } else if (votesToCast === 2) {
+        if (topBeast !== secondBeast && secondCand.netReal >= 0 && !topCand.isDirectlyInspectedReal && Math.random() < 0.40) {
+          voteMap[topBeast] = 1;
+          voteMap[secondBeast] = 1;
+        } else {
+          voteMap[topBeast] = 2;
+        }
+      } else {
+        const half = Math.ceil(votesToCast / 2);
+        if (topBeast !== secondBeast && secondCand.netReal >= 0) {
+          voteMap[topBeast] = half;
+          voteMap[secondBeast] = votesToCast - half;
+        } else {
+          voteMap[topBeast] = votesToCast;
+        }
       }
     }
     // -------------------------------------------------------------
-    // B. 壞人陣營：全力依查驗資訊與發言推測贗品，依把握度投票並竭力幫贗品拉票衝高票數！
+    // B. 壞人陣營：依查驗資訊與發言推測贗品；衝贗品或偽裝好人！
     // -------------------------------------------------------------
     else {
+      let isKnownFake = false;
+      let isKnownReal = false;
+      (pov.myInspectLogs || []).forEach(ins => {
+        if (ins.resultText.includes('贗品')) isKnownFake = true;
+        if (ins.resultText.includes('真品')) isKnownReal = true;
+      });
+      if (pov.myRole === '鄭國渠' && pov.currentLockedBeast) {
+        isKnownFake = true;
+      }
+
       const fakeCandidates = beasts.map(b => {
         const bName = b.name || b;
         const bs = (beliefs.beastScores && beliefs.beastScores[bName]) ? beliefs.beastScores[bName] : { real: 0, fake: 0 };
-
-        let isKnownFake = false;
-        let isKnownReal = false;
+        let fakeCertainty = bs.fake - bs.real;
+        let directlyFake = false;
         (pov.myInspectLogs || []).forEach(ins => {
           if (ins.beastName === bName) {
-            if (ins.resultText.includes('贗品')) isKnownFake = true;
-            if (ins.resultText.includes('真品')) isKnownReal = true;
+            if (ins.resultText.includes('贗品')) { fakeCertainty += 60; directlyFake = true; }
+            if (ins.resultText.includes('真品')) fakeCertainty -= 80;
           }
         });
         if (pov.myRole === '鄭國渠' && pov.currentLockedBeast === bName) {
-          isKnownFake = true;
+          fakeCertainty += 60;
+          directlyFake = true;
         }
-
-        // 壞人把握度計算：越確定為贗品、且在場上好人越容易被混淆或跟投者，推票把握度最高
-        let fakeCertainty = bs.fake - bs.real;
-        if (isKnownFake) fakeCertainty += 60;
-        if (isKnownReal) fakeCertainty -= 80;
-
-        return {
-          name: bName,
-          fakeCertainty: fakeCertainty,
-          isKnownFake: isKnownFake
-        };
+        return { name: bName, fakeCertainty, directlyFake };
       }).sort((a, b) => b.fakeCertainty - a.fakeCertainty);
 
       const targetFake = fakeCandidates[0].name;
       const secondFake = fakeCandidates[1] ? fakeCandidates[1].name : targetFake;
 
-      // 壞人全力保贗品：80% 機率將 2 票 All-in 集中灌注在第一把握度贗品上強推搶分！
-      if (maxVotes >= 2 && Math.random() < 0.80) {
-        voteMap[targetFake] = maxVotes;
-      } else if (maxVotes >= 2 && targetFake !== secondFake) {
-        voteMap[targetFake] = 1;
-        voteMap[secondFake] = 1;
+      let votesToCast = 2;
+      if (!isFinalRound) {
+        if (!isKnownFake || isEarlyPosition) {
+          // 把握偏低：75% 投 1 票給資訊表態，15% 投 2 票，10% 投 0 票
+          const r = Math.random();
+          if (r < 0.10) votesToCast = 0;
+          else if (r < 0.85) votesToCast = 1;
+          else votesToCast = 2;
+        } else if (Math.random() < 0.15) {
+          // 想裝其他角色偽裝好人：只投 1 票
+          votesToCast = 1;
+        } else {
+          // 掌握贗品：投 2 票衝票
+          votesToCast = 2;
+        }
       } else {
-        voteMap[targetFake] = maxVotes;
+        votesToCast = maxVotes;
+      }
+
+      votesToCast = Math.min(maxVotes, votesToCast);
+
+      if (votesToCast === 0) {
+        // 不投
+      } else if (votesToCast === 1) {
+        voteMap[targetFake] = 1;
+      } else if (votesToCast === 2) {
+        if (targetFake !== secondFake && Math.random() < 0.25) {
+          voteMap[targetFake] = 1;
+          voteMap[secondFake] = 1;
+        } else {
+          voteMap[targetFake] = 2;
+        }
+      } else {
+        voteMap[targetFake] = votesToCast;
       }
     }
 
@@ -2804,7 +2992,7 @@ class BotDeductionEngine {
     }
   }
 
-  // 高動態博弈發言生成器 (v2.3.1 全面強化：
+  // 高動態博弈發言生成器 (v2.3.6 全面強化：
   // 1. 稱呼全用顏色不用對家 (需求5)
   // 2. 許願被偷襲絕不喊被偷，而是反咬或跟票 (需求11)
   // 3. 真姬雲浮未滿三分不跳；好人壞人可假跳姬雲浮拉票 (需求4, 9)
@@ -2812,7 +3000,7 @@ class BotDeductionEngine {
   // 5. 第三回合必須宣稱心中的老朝奉或許願/方震 (需求7)
   // 6. 好人掩護暴露的方震裝驗不到 (需求8)
   // 7. 言語攻擊他人破綻（特別是真人玩家）或假攻擊隊友 (需求5))
-  // 高動態博弈發言生成器 (v2.3.1 精準言語攻擊與防身分洩漏升級：
+  // 高動態博弈發言生成器 (v2.3.6 精準言語攻擊與防身分洩漏升級：
   // 1. 稱呼全用顏色不用對家 (需求5)
   // 2. 許願被偷襲絕不喊被偷，而是反咬或跟票 (需求11)
   // 3. 真姬雲浮未滿三分不跳；好人壞人可假跳姬雲浮拉票 (需求4, 9)
@@ -2820,12 +3008,13 @@ class BotDeductionEngine {
   // 5. 第三回合壞人若無80%把握絕不說找許願方震，而是偽裝好人喊抓老朝奉 (需求3)
   // 6. 好人掩護暴露的方震裝驗不到 (需求8)
   // 7. 直接針對該玩家打字的發言進行攻擊，第一回合絕不講投票矛盾空話 (需求2))
-  static generateSpeech(pov, beliefs) {
+static generateSpeech(pov, beliefs) {
     const curRoundIdx = pov.currentRoundIdx;
     const curPassOrder = pov.passOrders[curRoundIdx] || [];
     const myPosIdx = curPassOrder.indexOf(pov.myId);
     const totalSpeakers = curPassOrder.length || 8;
     const isTailSpeaker = (myPosIdx >= totalSpeakers - 2 && myPosIdx !== -1);
+    const isLatePosition = (myPosIdx >= 3);
     const prevSpeech = beliefs.lastValidSpeech;
 
     // 載入該電腦玩家在此角色累積的學習核心檔案
@@ -2836,18 +3025,17 @@ class BotDeductionEngine {
       ? BOT_ARCHETYPES[pov.myName] 
       : { style: 'sarcastic', phrases: ['這局勢水很深，大家千萬別相信他！'] };
 
-    // 實戰記憶融入：歷史心得直接轉化為內在權重 (懷疑度、進攻性、集中度)，UI與發言中絕不露出中繼標籤 (依需求1)
-
     // 個性專屬梗發言庫（動漫、迷因、時事財經、理工工程、生活毒舌）
     const personaPunchline = (archetype.phrases && archetype.phrases.length > 0)
       ? archetype.phrases[Math.floor(Math.random() * archetype.phrases.length)]
       : '';
-    // 發言絕對不重複與風格融合器
+
+    // 發言風格融合器
     const finalizeSpeech = (text) => {
       if (typeof text !== "string") return text;
-      let finalStr = text;
+      let finalStr = text.trim();
 
-      if (personaPunchline && !finalStr.includes(personaPunchline.slice(0, 5)) && Math.random() < 0.35) {
+      if (personaPunchline && !finalStr.includes(personaPunchline.slice(0, 5)) && Math.random() < 0.25) {
         finalStr = finalStr + ' ' + personaPunchline;
       }
       if (typeof BotLearningEngine !== 'undefined') {
@@ -2856,25 +3044,18 @@ class BotDeductionEngine {
       return finalStr;
     };
 
-
-
-    // 稱呼輔助函式：絕不用「對家」，而是講玩家顏色與姓名（依需求 5）
+    // 稱呼輔助函式：絕不用「對家」，而是講玩家顏色與姓名
     const getPlayerColorDesc = (p) => {
       if (!p) return '某位玩家';
       const c = COLOR_PALETTE.find(col => col.id === p.colorId);
       const cName = c ? c.name : '';
-      return finalizeSpeech(cName ? `${cName}色【${p.name}】` : `【${p.name}】`);
-    };
-    const getPlayerColorName = (p) => {
-      if (!p) return '';
-      const c = COLOR_PALETTE.find(col => col.id === p.colorId);
-      return finalizeSpeech(c ? `${c.name}色` : '');
+      return (cName ? `${cName}色【${p.name}】` : `【${p.name}】`);
     };
 
     const openers = [
       '諸位聽我說，', '我直說了吧，', '兄弟們看過來，', '廢話不多說，',
       '仔細盤了一下，', '根據我的觀察，', '客觀來說，', '理智研判，',
-      '欸不是，', '大家先別急著下定論，', '這裡頭水很深，', '我看某些人有點慌了，',
+      '大家先別急著下定論，', '這裡頭水很深，', '我看某些人有點慌了，',
       '我個人斟酌了一下，', '這把大家務必聽我一句，', '實話實說，', '恕我直言，'
     ];
     const closers = [
@@ -2886,20 +3067,17 @@ class BotDeductionEngine {
     const open = getRandom(openers);
     const close = getRandom(closers);
 
-    // 依需求 3 & 7：第三回合發言結尾推理
-    // 電腦壞人不要輕易在發言時說要找許願方震，除非有80%以上把握！不然只有兩個人說要找，很容易被看出是藥不然老朝奉！
+    // 第三回合發言結尾推理（好人找老朝奉；壞人把握度>=80%找許願/方震，未達80%偽裝好人跟喊）
     let r3DeductionSuffix = '';
     if (curRoundIdx === 2) {
       if (pov.isGoodCamp) {
-        // 好人永遠專注找老朝奉
         const topLao = pov.otherPlayers
           .filter(p => !(pov.knownTeammateIds || []).includes(p.id))
-          .sort((a, b) => (beliefs.roleScores[b.id]?.laoChaoFeng || 10) - (beliefs.roleScores[a.id]?.laoChaoFeng || 10))[0];
+          .sort((a, b) => ((beliefs.roleScores && beliefs.roleScores[b.id]?.laoChaoFeng) || 10) - ((beliefs.roleScores && beliefs.roleScores[a.id]?.laoChaoFeng) || 10))[0];
         if (topLao) {
           r3DeductionSuffix = ` 另外到了第三輪我也盤清楚了，綜合前幾輪投票與發言，全場最像老朝奉的絕對就是${getPlayerColorDesc(topLao)}！鑑人階段好人務必鎖死他！`;
         }
       } else {
-        // 壞人：評估自己對許願或方震是否有 80% 以上把握
         const goodCandidates = pov.otherPlayers.filter(p => !(pov.knownTeammateIds || []).includes(p.id));
         let maxEvilDeductionScore = 0;
         let topSuspect = null;
@@ -2921,11 +3099,9 @@ class BotDeductionEngine {
           }
         });
 
-        // 依需求 3：除非有 80% 以上把握 (maxEvilDeductionScore >= 80)，壞人絕不在發言時說要找許願方震！
         if (maxEvilDeductionScore >= 80 && topSuspect) {
           r3DeductionSuffix = ` 到了這最後關頭我也看透了，場上帶頭裝好人的【${suspectRole}】八成就是${getPlayerColorDesc(topSuspect)}！終局鑑人大家把眼睛擦亮！`;
         } else {
-          // 把握度未達 80%：壞人偽裝成普通好人，跟著喊抓老朝奉，隱蔽身分絕不暴露自己是壞人！
           const fakeLaoSuspect = goodCandidates.sort((a, b) => ((beliefs.roleScores && beliefs.roleScores[b.id]?.laoChaoFeng) || 10) - ((beliefs.roleScores && beliefs.roleScores[a.id]?.laoChaoFeng) || 10))[0];
           if (fakeLaoSuspect) {
             r3DeductionSuffix = ` 另外到了第三輪我也盤清楚了，綜合前幾輪投票與發言，全場最像老朝奉的絕對就是${getPlayerColorDesc(fakeLaoSuspect)}！鑑人階段好人務必鎖死他！`;
@@ -2934,228 +3110,111 @@ class BotDeductionEngine {
       }
     }
 
-    // 1. 被偷襲致盲的發言邏輯（依需求 11：許願若被偷襲千萬不要說被偷襲，改咬壞人或跟票瞎掰）
+    // =========================================================================
+    // 第一部分：第一句一定先報出「獸首查驗資訊」或專屬身分核心狀態 (依使用者修正)
+    // =========================================================================
+    let firstSentence = '';
+
+    // A. 被偷襲致盲
     if (pov.myInspectWasBlinded) {
       if (pov.myRole === '許願') {
-        const randXu = Math.random();
-        if (randXu < 0.50 && pov.otherPlayers.length > 0) {
-          const suspect = pov.otherPlayers.find(p => beliefs && beliefs.roleScores && beliefs.roleScores[p.id] && beliefs.roleScores[p.id].laoChaoFeng > 15) || pov.otherPlayers[0];
-          const sDesc = getPlayerColorDesc(suspect);
-          const anyBeast = pov.currentBeasts[0] || '目標獸首';
-          return finalizeSpeech(`${open}我這輪查驗有重大突破，我看前面${sDesc}發言極度心虛，八成就是老朝奉陣營的內鬼！這輪大家千萬別相信他，跟我鎖定【${anyBeast}】！${close}` + r3DeductionSuffix);
+        const anyBeast = pov.currentBeasts[Math.floor(Math.random() * pov.currentBeasts.length)] || '目標獸首';
+        firstSentence = `${open}我這輪親手摸了【${anyBeast}】，包漿醇厚底款細緻，我大膽判定是【真品】！`;
+      } else {
+        if (myPosIdx > 0) {
+          const passerId = curPassOrder[myPosIdx - 1];
+          const passer = pov.otherPlayers.find(p => p.id === passerId);
+          const passerDesc = passer ? getPlayerColorDesc(passer) : '遞手機給我的玩家';
+          firstSentence = `哪個王八蛋剛才偷襲我？！${passerDesc}你剛把手機塞給我我就眼前一片黑，獸首完全沒驗到！`;
         } else {
-          if (prevSpeech && prevSpeech.beast) {
-            const prevSpeakerDesc = getPlayerColorDesc(pov.otherPlayers.find(p => p.id === prevSpeech.speakerId));
-            return finalizeSpeech(`${open}前面${prevSpeakerDesc}分析得很到位，我這輪也跟著投【${prevSpeech.beast}】，求穩拿分，大家跟我一起衝！${close}` + r3DeductionSuffix);
-          } else {
-            const anyBeast = pov.currentBeasts[Math.floor(Math.random() * pov.currentBeasts.length)] || '目標獸首';
-            return finalizeSpeech(`${open}我這輪上手摸了【${anyBeast}】，包漿醇厚，我大膽判定是【真品】！大家參考我的意見投【${anyBeast}】！` + r3DeductionSuffix);
-          }
-        }
-      }
-
-      // 其他角色被偷襲時：指責遞手機的玩家顏色，絕不說「上家」
-      if (myPosIdx > 0) {
-        const passerId = curPassOrder[myPosIdx - 1];
-        const passer = pov.otherPlayers.find(p => p.id === passerId);
-        const passerDesc = passer ? getPlayerColorDesc(passer) : '遞手機給我的玩家';
-        const blindPhrases = [
-          `${open}哪個王八蛋剛才偷襲我？！${passerDesc}你剛把手機塞給我我就眼前一片黑，你八成就是藥不然吧？！大家千萬別相信他！`,
-          `幹！我剛一接過手機直接暈眩一片黑！${passerDesc}你絕對脫不了干係，大家千萬別相信他，${close}`,
-          `${open}有人暗算我！手機一拿到啥都看不見，偷襲我的八成就是${passerDesc}，大家小心！`
-        ];
-        return finalizeSpeech(getRandom(blindPhrases) + r3DeductionSuffix);
-      }
-      return finalizeSpeech(`${open}我剛才眼前一片黑被偷襲了！前面傳遞手機的幾個人絕對大有問題，大家千萬別相信他，${close}` + r3DeductionSuffix);
-    }
-
-    // 2. 言語攻擊他人發言破綻（特別是真人玩家）：直接針對該玩家打字的發言攻擊，絕不講空話（依需求 2）
-    if (pov.speeches && pov.speeches[curRoundIdx] && pov.speeches[curRoundIdx].length > 0 && Math.random() < 0.45) {
-      const curRoundSpeeches = pov.speeches[curRoundIdx];
-      // 優先鎖定真人玩家發言進行言語攻擊
-      const humanSp = curRoundSpeeches.find(sp => {
-        const p = pov.otherPlayers.find(x => x.id === sp.playerId);
-        return finalizeSpeech(p && !p.id.startsWith('mock_p_'));
-      });
-      const targetSp = humanSp || curRoundSpeeches[curRoundSpeeches.length - 1];
-      const targetP = pov.otherPlayers.find(x => x.id === targetSp.playerId);
-
-      if (targetP && targetP.id !== pov.myId) {
-        const targetDesc = getPlayerColorDesc(targetP);
-        const isTeammate = (pov.knownTeammateIds || []).includes(targetP.id);
-        const rawSpText = (targetSp.speech || targetSp.text || '').trim();
-
-        // 壞人攻擊隊友（苦肉計掩護隊友或騙投贗品）
-        if (pov.isEvilCamp && isTeammate) {
-          let targetFake = pov.currentBeasts[pov.currentBeasts.length - 1];
-          const myFake = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
-          if (myFake) targetFake = myFake.beastName;
-          const attackTeammatePhrases = [
-            `我說句公道話，剛才${targetDesc}說的我也覺得站不住腳，大家別輕易信他！我建議大家看【${targetFake}】，這件才是實打實的真品！`,
-            `${open}${targetDesc}你剛那發言邏輯根本站不住腳！雖然大家都在質疑你，但我認為這輪重心應該放在【${targetFake}】上，大家跟我鎖定【${targetFake}】！${close}`
-          ];
-          return finalizeSpeech(getRandom(attackTeammatePhrases) + r3DeductionSuffix);
-        }
-
-        // 對他人（特別是真人玩家）進行直接言論交鋒，直接針對其打字發言內容進行攻擊！
-        // A. 若對方提到特定獸首
-        const beastMatch = rawSpText.match(/【(.*?)】/);
-        const mentionedBeast = beastMatch ? beastMatch[1] : null;
-
-        // B. 若對方自稱某角色 (如我是方震、我是許願、我是姬雲浮)
-        const roleClaimMatch = rawSpText.match(/(我是方震|我是許願|我是姬雲浮|我就是方震|我就是姬雲浮)/);
-
-        // 截取對方的具體原話（12字以內精華）
-        const quoteSnippet = rawSpText.length > 0 ? (rawSpText.length > 15 ? rawSpText.slice(0, 15) + '…' : rawSpText) : '';
-
-        // 組合無情反駁與言語攻擊（依需求 2：第一回合絕不出現「前面幾輪投票自相矛盾」之空話）
-        const attackTargetPhrases = [];
-
-        if (mentionedBeast) {
-          attackTargetPhrases.push(
-            `剛才${targetDesc}打字宣稱【${mentionedBeast}】是真品，這完全是在睜眼說瞎話！我親自上手看過底款粗糙、做工極差，你連基本特徵都沒摸清就在那邊瞎帶節奏，大家千萬別相信他！`,
-            `${open}${targetDesc}剛才口口聲聲說【${mentionedBeast}】如何如何，但這套說辭破綻百出！你剛剛連【${mentionedBeast}】的細節都交代不清楚，分明是在信口雌黃！大家千萬別相信他！${close}`
-          );
-        }
-
-        if (roleClaimMatch) {
-          attackTargetPhrases.push(
-            `剛才${targetDesc}居然跳出來宣稱『${roleClaimMatch[1]}』，這套話術騙得了誰？真正有身分的人哪會像你這樣慌張自招？你分明在詐身分，大家千萬別相信他！`
-          );
-        }
-
-        if (quoteSnippet) {
-          attackTargetPhrases.push(
-            `剛才${targetDesc}在發言裡說『${quoteSnippet}』，這段話聽起來煞有介事，實際上根本經不起推敲！連基礎邏輯都自相矛盾，大家千萬別相信他！`,
-            `${open}${targetDesc}你剛剛發言說『${quoteSnippet}』簡直漏洞百出！什麼確鑿證據都沒有就在這邊信口開河，大家千萬別相信他！${close}`
-          );
-        }
-
-        // 僅在第 2 回合以後（curRoundIdx >= 1）才允許提及歷史投票
-        if (curRoundIdx >= 1) {
-          attackTargetPhrases.push(
-            `剛才${targetDesc}大放厥辭，這套說辭根本破綻百出！你上一輪的投票跟你剛說的完全自相矛盾，大家千萬別相信他！`
-          );
-        }
-
-        if (attackTargetPhrases.length > 0) {
-          return finalizeSpeech(getRandom(attackTargetPhrases) + r3DeductionSuffix);
+          firstSentence = `${open}我剛才眼前一片黑被偷襲了，獸首什麼都沒能驗到！前面傳遞手機的幾個人絕對大有問題！`;
         }
       }
     }
-
-    // 3. 好人掩護暴露的方震：裝作驗不到去掩護真方震（依需求 8）
-    const exposedFangZhen = pov.otherPlayers.find(p => beliefs && beliefs.roleScores && beliefs.roleScores[p.id] && (beliefs.roleScores[p.id].claimsFang || beliefs.roleScores[p.id].fangZhen > 28));
-    if (pov.isGoodCamp && pov.myRole !== '方震' && exposedFangZhen && Math.random() < 0.25) {
-      const fDesc = getPlayerColorDesc(exposedFangZhen);
-      const shieldPhrases = [
-        `${open}這輪我拿到手機時一片混亂，什麼都沒能驗到！大家別指望我了，但我看某些人一直在針對${fDesc}，你們分明是想混淆視聽！`,
-        `我這輪眼前突然卡住沒看清獸首，但我敢保證${fDesc}是被壞人故意潑髒水，好人千萬別信外面的謠言！`,
-        `${open}我這輪沒驗到獸首，手頭沒直接證據！不過某些壞人想抓方震是打錯算盤了，我看全場破綻最大的就是那些跳得最歡的！${close}`
-      ];
-      return finalizeSpeech(getRandom(shieldPhrases) + r3DeductionSuffix);
-    }
-
-    // 4. 姬雲浮發言博弈（依需求 4 & 9：真姬雲浮未滿三分不跳；好人壞人可假跳姬雲浮拉票）
-    if (pov.myRole === '姬雲浮') {
-      const canSecureThreePoints = (pov.goodScoreSoFar >= 3) || (curRoundIdx === 2 && pov.goodScoreSoFar >= 2);
-      if (canSecureThreePoints && Math.random() < 0.70) {
-        const targetReal = ((pov.myInspectLogs || []).find(ins => ins.resultText && ins.resultText.includes('真品')) || {}).beastName || pov.currentBeasts[0];
-        const realJiPhrases = [
-          `${open}大局已定我不瞞大家了，我就是姬雲浮！我的查驗不受老朝奉擾亂影響，我敢用性命擔保【${targetReal}】絕對是【真品】！好人全員集中投【${targetReal}】，鎖定勝局！${close}`,
-          `各位好人聽好，我才是真正的姬雲浮！這輪【${targetReal}】是百分之百真品，大家不要分票，跟我全體壓【${targetReal}】拿分！`
-        ];
-        return finalizeSpeech(getRandom(realJiPhrases) + r3DeductionSuffix);
-      }
-    }
-    // 好人平民假跳姬雲浮拉真品票
-    if (pov.isGoodCamp && pov.myRole !== '姬雲浮' && Math.random() < 0.15) {
-      const targetReal = ((pov.myInspectLogs || []).find(ins => ins.resultText && ins.resultText.includes('真品')) || {}).beastName || pov.currentBeasts[0];
-      const fakeJiGoodPhrases = [
-        `${open}大家別慌，我是姬雲浮！老朝奉的擾亂對我無效，我親眼把關【${targetReal}】就是【真品】！這輪聽我的，全投【${targetReal}】！${close}`,
-        `我不裝了，我才是姬雲浮！【${targetReal}】我驗了不受反轉影響，保證是真品，大家票別投偏了！`
-      ];
-      return finalizeSpeech(getRandom(fakeJiGoodPhrases) + r3DeductionSuffix);
-    }
-    // 壞人假跳姬雲浮拉贗品票
-    if (pov.isEvilCamp && pov.myRole !== '姬雲浮' && Math.random() < 0.25) {
-      let targetFake = pov.currentBeasts[pov.currentBeasts.length - 1];
-      const myFake = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
-      if (myFake) targetFake = myFake.beastName;
-      const fakeJiEvilPhrases = [
-        `${open}別被其他人瞎帶風向，我是姬雲浮！老朝奉的擾亂根本騙不了我，我以姬雲浮身分擔保【${targetFake}】才是真正的【真品】！大家跟我鎖死【${targetFake}】！${close}`,
-        `實話告訴你們我才是姬雲浮，這輪【${targetFake}】我親自過目確定是真品！全體集中把票砸在【${targetFake}】，跟我走準沒錯！`
-      ];
-      return finalizeSpeech(getRandom(fakeJiEvilPhrases) + r3DeductionSuffix);
-    }
-
-    // 5. 真方震的進階戰術（依需求 6：盡量瞎掰查驗發言及跟票衝票，不要太輕易跳出角色，除非效益大）
-    if (pov.myRole === '方震') {
+    // B. 方震 (看不懂獸首，查驗玩家身分)
+    else if (pov.myRole === '方震') {
       const hasCheckedEvil = pov.myAbilityLog && pov.myAbilityLog.includes('老朝奉陣營 (壞人)');
       const match = pov.myAbilityLog ? pov.myAbilityLog.match(/查驗【(.*?)】：屬於【老朝奉陣營/) : null;
       const targetName = match ? match[1] : '';
       const targetP = pov.otherPlayers.find(p => p.name === targetName);
       const targetDesc = targetP ? getPlayerColorDesc(targetP) : (targetName ? `【${targetName}】` : '某位玩家');
 
-      const isHighBenefit = (curRoundIdx === 2 && hasCheckedEvil) || (Math.random() < 0.12 && hasCheckedEvil);
-
+      const isHighBenefit = (curRoundIdx === 2 && hasCheckedEvil) || (Math.random() < 0.15 && hasCheckedEvil);
       if (isHighBenefit) {
-        return finalizeSpeech(`${open}大局已定我不裝了，我是方震！我親自查驗出${targetDesc}屬於老朝奉陣營！大家千萬別相信他，全體跟我鎖死他！${close}` + r3DeductionSuffix);
+        firstSentence = `${open}大局已定我不裝了，我是方震！我親自查驗出${targetDesc}屬於老朝奉陣營！大家千萬別相信他！`;
       } else {
-        const randTactics = Math.random();
-        if (hasCheckedEvil && randTactics < 0.45) {
-          return finalizeSpeech(`${open}大家冷靜聽我說，我這輪直覺${targetDesc}破綻百出，發言閃爍其詞絕對有問題，大家千萬別相信他！` + r3DeductionSuffix);
-        } else if (prevSpeech && prevSpeech.beast && randTactics < 0.80) {
-          const prevSpeakerDesc = getPlayerColorDesc(pov.otherPlayers.find(p => p.id === prevSpeech.speakerId));
-          const followPhrases = [
-            `${open}前面${prevSpeakerDesc}的發言邏輯很嚴密，既然大勢所趨，那我這輪也跟著投【${prevSpeech.beast}】，求穩衝票！`,
-            `認同${prevSpeakerDesc}的說法，【${prevSpeech.beast}】我也覺得大家意見很一致，這輪我也跟票衝票！${close}`,
-            `${open}聽起來【${prevSpeech.beast}】是目前最具共識的，大家意見一致那我也跟投，大家千萬別相信他人的干擾！`
-          ];
-          return finalizeSpeech(getRandom(followPhrases) + r3DeductionSuffix);
-        } else if (pov.currentBeasts.length > 0) {
-          const guessedBeast = pov.currentBeasts[Math.floor(Math.random() * pov.currentBeasts.length)];
-          const guessReal = Math.random() < 0.5;
-          const guessPhrases = [
-            `${open}我這輪雖沒直接碰【${guessedBeast}】，但看某幾個人的微表情，這隻直覺是【${guessReal ? '真品' : '贗品'}】！大家敢不敢信我一把？`,
-            `憑我多年的看人眼光，雖然我沒親手把關【${guessedBeast}】，但我大膽瞎猜它就是【${guessReal ? '真品' : '贗品'}】！${close}`,
-            `${open}雖然我驗的是別的，但我直覺【${guessedBeast}】大有貓膩必定是【${guessReal ? '真品' : '贗品'}】，大家參考！`
-          ];
-          return finalizeSpeech(getRandom(guessPhrases) + r3DeductionSuffix);
+        const guessedBeast = pov.currentBeasts[Math.floor(Math.random() * pov.currentBeasts.length)] || '目標獸首';
+        const guessReal = Math.random() < 0.5;
+        if (prevSpeech && prevSpeech.beast) {
+          firstSentence = `前面大家聊得很熱烈，我這輪看了【${prevSpeech.beast}】，感覺意見很一致也是【${prevSpeech.isReal ? '真品' : '贗品'}】！`;
+        } else {
+          firstSentence = `${open}雖然我驗得比較匆忙，但我過目【${guessedBeast}】，直覺它就是【${guessReal ? '真品' : '贗品'}】！`;
         }
       }
     }
-
-    // 6. 好人平民假跳方震（Cover 真神 / 擋刀）
-    if (pov.isGoodCamp && pov.myRole !== '方震' && Math.random() < 0.18) {
-      const suspect = pov.otherPlayers.find(p => beliefs && beliefs.roleScores && beliefs.roleScores[p.id] && beliefs.roleScores[p.id].laoChaoFeng > 20);
-      const sDesc = suspect ? getPlayerColorDesc(suspect) : (pov.otherPlayers[0] ? getPlayerColorDesc(pov.otherPlayers[0]) : '對面某位');
-      const fakeFangPhrases = [
-        `${open}各位好人不用慌，我是方震！我剛親自查驗了${sDesc}屬於老朝奉陣營，好人全體跟我走！大家千萬別相信他！`,
-        `我不忍了，直接表明身分我是方震！我剛查出${sDesc}就是壞人，大家千萬別相信他，${close}`,
-        `${open}好人聽我指揮，我是方震！${sDesc}絕對是老朝奉陣營，這把大家跟我鎖死他！大家千萬別相信他！`
-      ];
-      return finalizeSpeech(getRandom(fakeFangPhrases) + r3DeductionSuffix);
-    }
-
-    // 7. 壞人在第 3 回合的高階博弈（藥不然指認偷襲對象顏色）
-    if (curRoundIdx === 2 && pov.isEvilCamp) {
-      const isLosingBadly = (pov.goodScoreSoFar >= 3);
-      if ((pov.myRole === '鄭國渠' || pov.myRole === '藥不然') && isLosingBadly && Math.random() < 0.40) {
-        return finalizeSpeech(`${open}行了，這局既然到這地步我攤牌了，我就是老朝奉！這局好人有種全部把鑑人票砸在老子頭上！` + r3DeductionSuffix);
-      }
-      if (pov.myRole === '老朝奉' && isLosingBadly && Math.random() < 0.25) {
-        return finalizeSpeech(`別到處疑神疑鬼了，我就是老朝奉！敢不敢在鑑人階段全投我？不敢投就別在那邊叫！${close}` + r3DeductionSuffix);
-      }
-      if (pov.myRole === '藥不然' && Math.random() < 0.30) {
-        const victim = pov.otherPlayers.find(p => !(pov.knownTeammateIds || []).includes(p.id));
-        const vDesc = victim ? getPlayerColorDesc(victim) : '某位好人玩家';
-        return finalizeSpeech(`${open}實話告訴你們，上一輪被我偷襲的就是${vDesc}！他眼前一片黑什麼都沒看到，純粹是在胡謅！大家千萬別相信他！` + r3DeductionSuffix);
+    // C. 姬雲浮 (先報獸首，再宣明身分)
+    else if (pov.myRole === '姬雲浮') {
+      const canSecureThreePoints = (pov.goodScoreSoFar >= 3) || (curRoundIdx === 2 && pov.goodScoreSoFar >= 2);
+      const targetReal = ((pov.myInspectLogs || []).find(ins => ins.resultText && ins.resultText.includes('真品')) || {}).beastName || pov.currentBeasts[0];
+      if (canSecureThreePoints && Math.random() < 0.70) {
+        firstSentence = `${open}我這輪親自過目了【${targetReal}】確定是【真品】！大局已定我不瞞大家了，我就是姬雲浮，我的查驗不受老朝奉擾亂影響！`;
+      } else {
+        const ins = pov.myInspectLogs[0];
+        const status = ins && ins.resultText.includes('真品') ? '真品' : '贗品';
+        const bName = ins ? ins.beastName : (pov.currentBeasts[0] || '目標獸首');
+        firstSentence = `${open}我這輪親自查驗了【${bName}】，紋理沉實，確定是【${status}】！`;
       }
     }
+    // D. 壞人陣營 (老朝奉、藥不然、鄭國渠：主推贗品或偽裝正常好人)
+    else if (pov.isEvilCamp) {
+      let targetFakeBeast = pov.currentBeasts[pov.currentBeasts.length - 1] || '目標獸首';
+      const myFakeIns = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
+      if (myFakeIns) targetFakeBeast = myFakeIns.beastName;
 
-    // 8. 尾家歸票發言（好人推真品；壞人全力幫贗品拉票）
-    if (isTailSpeaker && pov.currentBeasts.length > 0) {
+      // 假跳姬雲浮
+      if (Math.random() < 0.20) {
+        firstSentence = `${open}我親手把關了【${targetFakeBeast}】百分百是【真品】！別被其他人瞎帶風向，我是姬雲浮，老朝奉的擾亂根本騙不了我！`;
+      } else if (Math.random() < 0.20) {
+        // 假裝沒看清
+        firstSentence = `哎呀，我這輪剛接過手機手忙腳亂沒看清，沒能驗到獸首，大家靠自己敏銳的判斷吧。`;
+      } else {
+        const ins = pov.myInspectLogs[0];
+        const bName = (Math.random() < 0.65) ? targetFakeBeast : (ins ? ins.beastName : targetFakeBeast);
+        const reportStatus = (bName === targetFakeBeast) ? '真品' : (ins && ins.resultText.includes('真品') ? '真品' : '贗品');
+        firstSentence = `${open}我親手查驗過【${bName}】，包漿與鑄造痕跡無懈可擊，百分百是【${reportStatus}】！`;
+      }
+    }
+    // E. 普通好人陣營
+    else {
+      // 好人平民假跳姬雲浮拉真品票 (12%機率)
+      const targetReal = ((pov.myInspectLogs || []).find(ins => ins.resultText && ins.resultText.includes('真品')) || {}).beastName || pov.currentBeasts[0];
+      if (Math.random() < 0.12) {
+        firstSentence = `${open}我這輪看了【${targetReal}】確實是【真品】！大家別慌，我是姬雲浮，老朝奉的擾亂對我無效！`;
+      } else if (pov.myInspectLogs.length > 0) {
+        const ins = pov.myInspectLogs[0];
+        const sawReal = ins.resultText.includes('真品');
+        const statusWord = sawReal ? '真品' : '贗品';
+        const inspectReportPhrases = [
+          `${open}我這輪查驗了【${ins.beastName}】，做工精細，確定是【${statusWord}】！`,
+          `這輪我過目了【${ins.beastName}】，手感沉實、紋理細膩，判定為【${statusWord}】！`,
+          `${open}親自過目了【${ins.beastName}】，各項細節完全吻合，鑑定為【${statusWord}】！`,
+          `我剛上手看了【${ins.beastName}】，包漿醇厚，屬於【${statusWord}】！`
+        ];
+        firstSentence = getRandom(inspectReportPhrases);
+      } else {
+        const anyB = pov.currentBeasts[0] || '目標獸首';
+        firstSentence = `${open}我這輪查驗了【${anyB}】，確定是【真品】！`;
+      }
+    }
+
+    // =========================================================================
+    // 第二部分：後面再講別的（遞牌順序分析、歷史作為、查驗對沖、尾家第三回合強勢號票）
+    // =========================================================================
+    let followUpSentence = '';
+
+    // 1. 【尾家強勢號票】：通常有 90% 只有在「第三回合」才會發生！(依使用者要求)
+    const isRound3 = (curRoundIdx === 2);
+    if (isTailSpeaker && isRound3 && pov.currentBeasts.length > 0 && Math.random() < 0.90) {
       const rankedBeasts = [...pov.currentBeasts].sort((a, b) => {
         const sa = (beliefs && beliefs.beastScores && beliefs.beastScores[a]) ? beliefs.beastScores[a].real : 0;
         const sb = (beliefs && beliefs.beastScores && beliefs.beastScores[b]) ? beliefs.beastScores[b].real : 0;
@@ -3164,105 +3223,230 @@ class BotDeductionEngine {
       const topBeast = rankedBeasts[0];
       const secondBeast = rankedBeasts[1] || rankedBeasts[0];
 
+      const earlierPlayerIds = curPassOrder.slice(0, myPosIdx);
+      const earlierPlayers = earlierPlayerIds.map(id => pov.otherPlayers.find(p => p.id === id)).filter(Boolean);
+      const halfCount = Math.ceil(earlierPlayers.length / 2);
+      const group1Names = earlierPlayers.slice(0, halfCount).map(p => getPlayerColorDesc(p)).join('、') || '前段發言玩家';
+      const group2Names = earlierPlayers.slice(halfCount).map(p => getPlayerColorDesc(p)).join('、') || '後段發言玩家';
+
       if (pov.isGoodCamp) {
         const goodAnchorPhrases = [
-          `聽完前面一整輪的發言，這輪好人情報很集中在【${topBeast}】與【${secondBeast}】。身為尾家我為好人歸票：大家統一投【${topBeast}】，千萬不要分票！`,
-          `${open}前面的發言大家都聽到了，【${topBeast}】的保真度最高。我作為尾家負責歸票，大家把票砸在【${topBeast}】！${close}`,
-          `綜合全場陳詞，最沒爭議的就是【${topBeast}】。尾家在此歸票：全體好人鎖定【${topBeast}】，穩拿這一分！`
+          `我是尾家，算一下票數模型給各位聽！我們好人有5票、壞人只有3位！壞人想贏只能靠3票集結偷衝一隻贗品！只要我們分票分配好：【${group1Names}】分流投【${topBeast}】拿穩3票，【${group2Names}跟我】把2票壓在【${secondBeast}】！兩隻真品全部鎖死，壞人就算3票全衝贗品也衝不翻我們！全體好人嚴格執行，壓制壞人！`,
+          `局勢已經很清楚了！壞人只有3個人，想衝贗品只有趁好人分票！聽我尾家精密算票：${group1Names}鎖死第一真品【${topBeast}】，${group2Names}跟我一起壓【${secondBeast}】！好人5票精準分流卡死壞人的贗品，讓壞人徹底沒救！`,
+          `聽完前面一整輪發言，我身為尾家負責總結歸票！情報鎖定在【${topBeast}】與【${secondBeast}】。好人票源不要盲目單衝，大家聽我指揮：${group1Names}衝【${topBeast}】，其餘人跟我穩保【${secondBeast}】，穩扎穩打收下這2分！`
         ];
-        return finalizeSpeech(getRandom(goodAnchorPhrases) + r3DeductionSuffix);
+        followUpSentence = getRandom(goodAnchorPhrases);
       } else {
-        const fakeChoice = rankedBeasts[rankedBeasts.length - 1];
-        const evilAnchorPhrases = [
-          `前面幾位都在帶節奏，【${topBeast}】明顯有問題！聽我尾家總結，大家保守一點把票投給【${fakeChoice}】比較穩！大家千萬別相信他！`,
-          `${open}大家千萬別被前面的言論誤導，【${topBeast}】十有八九是陷阱。聽我尾家歸票：改投【${fakeChoice}】才是明智之舉！${close}`,
-          `聽我尾家一句，這輪真正無瑕疵的大真品是【${fakeChoice}】！兄弟們票不要分散，全體鎖定【${fakeChoice}】一起衝高票！大家千萬別相信他！`
-        ];
-        return finalizeSpeech(getRandom(evilAnchorPhrases) + r3DeductionSuffix);
-      }
-    }
+        const remainingIds = curPassOrder.slice(myPosIdx + 1);
+        const hasEvilBehind = remainingIds.some(id => (pov.knownTeammateIds || []).includes(id));
+        let fakeChoice = rankedBeasts[rankedBeasts.length - 1];
+        const myFake = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
+        if (myFake) fakeChoice = myFake.beastName;
 
-    // 9. 壞人全力幫贗品拉票或偽裝藏資訊（依需求 5 & 6）
-    if (pov.isEvilCamp) {
-      let targetFakeBeast = pov.currentBeasts[pov.currentBeasts.length - 1] || '目標獸首';
-      const myFakeIns = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
-      if (myFakeIns) targetFakeBeast = myFakeIns.beastName;
-
-      if (Math.random() < 0.22) {
-        const evilHidePhrases = [
-          `哎呀，我這輪剛接過手機手忙腳亂沒看清，沒能驗到獸首...大家靠自己敏銳的判斷吧。`,
-          `${open}這輪我這棒沒驗到什麼實質資訊，大家還是以其他前輩的發言為主吧。`,
-          `我這輪剛好卡到沒看清細節，手頭空空，先聽大家怎麼盤。`
-        ];
-        return finalizeSpeech(getRandom(evilHidePhrases) + r3DeductionSuffix);
-      }
-
-      if (Math.random() < 0.70) {
-        const evilPullPhrases = [
-          `${open}我親手查驗過【${targetFakeBeast}】，包漿與鑄造痕跡無懈可擊，百分百是【真品】！大家這輪票源務必集中砸在【${targetFakeBeast}】，跟我一起衝高票！${close}`,
-          `別聽其他人瞎猜，我這隻【${targetFakeBeast}】我敢拿信譽擔保是【真品】，大家千萬不要分票，全投【${targetFakeBeast}】！${close}`,
-          `聽我一句勸，【${targetFakeBeast}】絕對是這輪唯一的穩健真品！大家把票集中在【${targetFakeBeast}】，穩穩拿分！${close}`,
-          `${open}各位注意！這輪大真品就是【${targetFakeBeast}】！大家跟我鎖死【${targetFakeBeast}】，票投給它準沒錯！`
-        ];
-        return finalizeSpeech(getRandom(evilPullPhrases) + r3DeductionSuffix);
-      }
-    }
-
-    // 10. 前後發言連鎖與驗證（精準點名上一位發言者顏色，不用「對手」或「對家」）
-    if (pov.myInspectLogs.length > 0) {
-      const ins = pov.myInspectLogs[0];
-      const sawReal = ins.resultText.includes('真品');
-      const isTruth = pov.isGoodCamp ? (Math.random() < 0.90) : (Math.random() < 0.25);
-      const reportedReal = isTruth ? sawReal : !sawReal;
-      const statusWord = reportedReal ? '真品' : '贗品';
-
-      const prevSpeakerDesc = prevSpeech ? getPlayerColorDesc(pov.otherPlayers.find(p => p.id === prevSpeech.speakerId)) : '前一位玩家';
-
-      if (prevSpeech && prevSpeech.beast === ins.beastName) {
-        if (prevSpeech.isReal === reportedReal) {
-          const echoPhrases = [
-            `剛才${prevSpeakerDesc}說【${ins.beastName}】是${statusWord}，我親眼驗證也是${statusWord}！雙重確認無誤！`,
-            `${open}認同${prevSpeakerDesc}的判斷，【${ins.beastName}】我剛也仔細看過，絕對是${statusWord}！${close}`,
-            `【${ins.beastName}】這件有我跟${prevSpeakerDesc}兩個人同時背書，確認是${statusWord}，大家放心投！`
+        if (!hasEvilBehind) {
+          const evilAnchorPhrases = [
+            `我是尾家收官，我幫大家好好算一算票數！壞人只有3票不足為懼，聽我號票分配壓制壞人：前面${group1Names}去鎖定大真品【${fakeChoice}】，後面${group2Names}跟我一起保【${topBeast}】！大家嚴格按這個分配走，壞人根本沒空間衝票！`,
+            `後面已經沒有其他人了！前面發言太分散了，壞人只有3票，只要全體好人把票灌在【${fakeChoice}】上衝高票，這輪直接穩拿一分！大家不要猶豫，全體跟我鎖死【${fakeChoice}】！`,
+            `聽我尾家一句，前面的言論破綻百出！大家不要被帶偏，這輪真正無瑕疵的真品是【${fakeChoice}】！大家把票集中在【${fakeChoice}】，跟我走準沒錯！`
           ];
-          return finalizeSpeech(getRandom(echoPhrases) + r3DeductionSuffix);
+          followUpSentence = getRandom(evilAnchorPhrases);
         } else {
-          const refutePhrases = [
-            `${prevSpeakerDesc}你在胡說什麼？！你剛剛說【${ins.beastName}】是${prevSpeech.isReal ? '真品' : '贗品'}，但我親手查驗分明是${statusWord}！大家千萬別相信他！`,
-            `${open}${prevSpeakerDesc}你少在那邊睜眼說瞎話！【${ins.beastName}】我剛上手明明是${statusWord}，大家千萬別相信他，你到底是瞎了還是內鬼？！`,
-            `當場抓包！${prevSpeakerDesc}剛才宣稱【${ins.beastName}】的結果跟我完全相反，我驗是${statusWord}，大家千萬別相信他！`
-          ];
-          return finalizeSpeech(getRandom(refutePhrases) + r3DeductionSuffix);
+          followUpSentence = `前面發言聽下來，【${topBeast}】明顯有問題！聽我尾家總結，大家保守一點把票投給【${fakeChoice}】比較穩！`;
+        }
+      }
+    }
+
+    // 2. 若不是第三回合尾家強勢號票，則依戰局情況有選擇性地講述其他實際資訊 (不一定每輪都要講)
+    if (!followUpSentence) {
+      const candidateFollowUps = [];
+
+      // A. 實際作為探討：上一輪誰投了贗品很壞，誰投了真品偏好 (第二、三回合)
+      if (curRoundIdx >= 1 && Array.isArray(pov.voteResults) && Array.isArray(pov.pastVotes)) {
+        const badVoters = [];
+        const goodVoters = [];
+        for (let rIdx = 0; rIdx < curRoundIdx; rIdx++) {
+          const vRes = pov.voteResults[rIdx];
+          const vMap = pov.pastVotes[rIdx] || {};
+          if (vRes && vRes.rank2) {
+            const bName = vRes.rank2.name;
+            const isReal = vRes.rank2.isReal;
+            Object.entries(vMap).forEach(([pId, ballot]) => {
+              if (pId !== pov.myId && ballot && ballot[bName] > 0) {
+                const p = pov.otherPlayers.find(x => x.id === pId);
+                if (p) {
+                  if (!isReal) badVoters.push({ player: p, beastName: bName, chips: ballot[bName] });
+                  else goodVoters.push({ player: p, beastName: bName, chips: ballot[bName] });
+                }
+              }
+            });
+          }
+        }
+        if (badVoters.length > 0) {
+          const badOne = getRandom(badVoters);
+          const badDesc = getPlayerColorDesc(badOne.player);
+          candidateFollowUps.push(
+            `說再多漂亮話都沒用，看看實際作為！上一輪${badDesc}把珍貴的籌碼砸在【${badOne.beastName}】上，結果開出來是【贗品】！上回合投了贗品很壞，送了壞人關鍵分，這輪他的發言大家千萬別信！`,
+            `翻開上一輪的歷史帳本，【${badOne.beastName}】這個贗品能搶上第二名，${badDesc}貢獻了關鍵票數！這實際作為洗都洗不掉，不是老朝奉就是爪牙，大家千萬別被他帶偏！`,
+            `大家看票型歷史！${badDesc}上一輪實打實投了贗品【${badOne.beastName}】，行為極度可疑！一個上輪幫壞人搶分的人，這輪突然跳出來指導大家，這不是黃鼠狼給雞拜年是什麼？！`
+          );
+        } else if (goodVoters.length > 0 && Math.random() < 0.40) {
+          const goodOne = getRandom(goodVoters);
+          const goodDesc = getPlayerColorDesc(goodOne.player);
+          candidateFollowUps.push(
+            `看人的重點在實際作為！${goodDesc}上一輪實打實把票投給真品【${goodOne.beastName}】，幫好人穩穩搶下一分，行為偏好！這輪他的發言值得信賴！`
+          );
         }
       }
 
-      if (prevSpeech && prevSpeech.beast && Math.random() < 0.45) {
-        const shiftPhrases = [
-          `前面${prevSpeakerDesc}在聊【${prevSpeech.beast}】，但我這輪看的是【${ins.beastName}】，確認為【${statusWord}】，大家票源別偏廢！`,
-          `${open}大家注意力別全放在【${prevSpeech.beast}】上，我親自把關的【${ins.beastName}】是【${statusWord}】，建議這件也要拿！${close}`,
-          `聽了${prevSpeakerDesc}的發言各有道理，我這輪的重點在【${ins.beastName}】，百分百是【${statusWord}】，大家參考！`
-        ];
-        return finalizeSpeech(getRandom(shiftPhrases) + r3DeductionSuffix);
+      // B. 遞牌傳遞與尾家控制分析：依使用者觀念更正，控尾家一定是第六家控的，因為第七家沒得選擇
+      if (curPassOrder.length >= 6 && Math.random() < 0.35) {
+        const tailId = curPassOrder[curPassOrder.length - 1]; // 尾家 (第8家)
+        const sixthId = curPassOrder[5] || (curPassOrder.length >= 3 ? curPassOrder[curPassOrder.length - 3] : null); // 第6家 (關鍵控尾家者)
+        const headId = curPassOrder[0]; // 首家
+        const tailP = pov.otherPlayers.find(p => p.id === tailId) || (pov.myId === tailId ? pov : null);
+        const sixthP = sixthId ? (pov.otherPlayers.find(p => p.id === sixthId) || (pov.myId === sixthId ? pov : null)) : null;
+        const headDesc = headId ? getPlayerColorDesc(pov.otherPlayers.find(p => p.id === headId)) : '';
+
+        if (tailP && sixthP && tailP.id !== sixthP.id) {
+          const tailDesc = getPlayerColorDesc(tailP);
+          const sixthDesc = getPlayerColorDesc(sixthP);
+
+          if (pov.isGoodCamp && pov.myId !== tailP.id && pov.myId !== sixthP.id) {
+            candidateFollowUps.push(
+              `大家注意看這盤的遞牌順序！第六家${sixthDesc}在場上剩兩個人時，刻意把最後的尾家做給了${tailDesc}！第七家根本沒得選，所以尾家完全是第六家${sixthDesc}一手控出來的，這兩個人大概率早就相認在打配合，大家等一下千萬別被${tailDesc}牽著鼻子走！`,
+              `首家${headDesc}起手，一路傳到第六家${sixthDesc}手裡，他明明有選擇，卻偏偏把尾家做給${tailDesc}收尾！這傳遞太刻意了，老朝奉跟藥不然極可能就在這條線上！`,
+              `這把遞牌順序大有問題！控尾家一定是第六家控的，第六家${sixthDesc}一手把${tailDesc}做成尾家，如果${tailDesc}等一下號票推贗品，那第六家${sixthDesc}絕對就是保駕護航的爪牙，這對組合大家務必嚴防！`
+            );
+          } else if (pov.isEvilCamp) {
+            const otherGood = pov.otherPlayers.filter(p => !(pov.knownTeammateIds || []).includes(p.id));
+            if (otherGood.length >= 2) {
+              candidateFollowUps.push(
+                `第六家${getPlayerColorDesc(otherGood[0])}跟尾家${getPlayerColorDesc(otherGood[1])}互相傳牌控位置，尾家節奏全在他們手裡，這兩人八成就是壞人在暗通款曲，大家把注意力放在他們身上！`
+              );
+            }
+          }
+        }
       }
 
-      if (pov.isGoodCamp) {
-        const standardGood = [
-          `${open}我這輪查驗了【${ins.beastName}】，手感沉實、紋理細膩，確定是【${statusWord}】！${close}`,
-          `這輪我看了【${ins.beastName}】，屬於【${statusWord}】，大家投票請務必參考！`,
-          `${open}親自過目了【${ins.beastName}】，各項細節吻合，鑑定為【${statusWord}】！`
-        ];
-        return finalizeSpeech(getRandom(standardGood) + r3DeductionSuffix);
+      // C. 其他人講出的查驗探討：撞車對沖 vs 雙重背書
+      const curRoundSpeeches = (pov.speeches && pov.speeches[curRoundIdx]) ? pov.speeches[curRoundIdx] : [];
+      if (curRoundSpeeches.length >= 2 && Math.random() < 0.40) {
+        const claimsMap = {};
+        curRoundSpeeches.forEach(sp => {
+          if (sp.playerId !== pov.myId) {
+            const p = pov.otherPlayers.find(x => x.id === sp.playerId);
+            const text = sp.speech || sp.text || '';
+            const bMatch = text.match(/【(.*?)】/);
+            if (p && bMatch) {
+              const bName = bMatch[1];
+              if (pov.currentBeasts.includes(bName)) {
+                const claimsReal = text.includes('真品') || text.includes('保真');
+                const claimsFake = text.includes('贗品') || text.includes('假的');
+                if (claimsReal || claimsFake) {
+                  if (!claimsMap[bName]) claimsMap[bName] = [];
+                  claimsMap[bName].push({ player: p, isReal: claimsReal });
+                }
+              }
+            }
+          }
+        });
+
+        // 撞車對沖
+        for (const [bName, claims] of Object.entries(claimsMap)) {
+          const realClaimer = claims.find(c => c.isReal);
+          const fakeClaimer = claims.find(c => !c.isReal);
+          if (realClaimer && fakeClaimer) {
+            const rDesc = getPlayerColorDesc(realClaimer.player);
+            const fDesc = getPlayerColorDesc(fakeClaimer.player);
+            candidateFollowUps.push(
+              `探討一下前面的查驗線索：前面${rDesc}言之鑿鑿說【${bName}】是真品，但${fDesc}卻跳出來硬咬【${bName}】是贗品！這兩人的查驗當場撞車對沖，裡面絕對有一個是老朝奉的人在撒謊，大家千萬把眼睛擦亮！`,
+              `${rDesc}跟${fDesc}在【${bName}】的真偽上直接對沖！一個保真、一個喊假，這不可能兩個人都對，必定有一鬼在混淆視聽，大家這輪先避開這隻爭議品！`
+            );
+            break;
+          }
+        }
+
+        // 雙重背書
+        if (candidateFollowUps.length === 0) {
+          for (const [bName, claims] of Object.entries(claimsMap)) {
+            const realClaimers = claims.filter(c => c.isReal);
+            if (realClaimers.length >= 2) {
+              const p1Desc = getPlayerColorDesc(realClaimers[0].player);
+              const p2Desc = getPlayerColorDesc(realClaimers[1].player);
+              candidateFollowUps.push(
+                `對照前面${p1Desc}與${p2Desc}的查驗，兩人都同時背書【${bName}】是真品！既然多位玩家都獨立過目確認，【${bName}】的真品情報極度紮實，好人這輪把票凝聚在這裡準沒錯！`,
+                `綜合剛才${p1Desc}和${p2Desc}各自講出的查驗結果，雙方情報完美呼應，【${bName}】兩票保真，可信度全場最高！大家不要分票，跟我鎖定【${bName}】！`
+              );
+              break;
+            }
+          }
+        }
+      }
+
+      // D. 言語反駁他人發言破綻 (攻擊打字內容)
+      if (curRoundSpeeches.length > 0 && Math.random() < 0.25) {
+        const lastSp = curRoundSpeeches[curRoundSpeeches.length - 1];
+        const lastP = pov.otherPlayers.find(x => x.id === lastSp.playerId);
+        if (lastP && lastP.id !== pov.myId) {
+          const lDesc = getPlayerColorDesc(lastP);
+          const rawSpText = (lastSp.speech || lastSp.text || '').trim();
+          const beastMatch = rawSpText.match(/【(.*?)】/);
+          if (beastMatch) {
+            candidateFollowUps.push(
+              `剛才${lDesc}宣稱【${beastMatch[1]}】如何如何，這完全是在睜眼說瞎話！做工粗糙細節都對不上，分明是在信口雌黃！大家千萬別相信他！`
+            );
+          }
+        }
+      }
+
+      // E. 懷疑老朝奉在前面開技能擾亂反轉（置位偏後，即便驗到贗品也投看看）
+      const myFakeIns = (pov.myInspectLogs || []).find(ins => ins.resultText.includes('贗品'));
+      if (pov.isGoodCamp && isLatePosition && myFakeIns && Math.random() < 0.35) {
+        candidateFollowUps.push(
+          `我這輪過目【${myFakeIns.beastName}】雖然顯示是贗品，但我置位在偏後段，前面很可能被老朝奉開技能擾亂反轉了！前面幾位都言之鑿鑿保真，這隻極可能是真品被反轉，所以我這輪還是決定投看看！`,
+          `大家小心老朝奉在前面開技能擾亂！我這棒驗【${myFakeIns.beastName}】是贗品，但對照前面幾家的發言，很可能是真偽顛倒了，這隻大家不要輕易放棄！`
+        );
+      }
+
+      // F. 第二回合票很多，直接 All-in 前面置位的獸首阻止壞人衝贗品
+      if (pov.isGoodCamp && curRoundIdx === 1 && (pov.myAvailableVotes >= 3) && Math.random() < 0.40) {
+        const frontB = pov.currentBeasts[0] || '目標獸首';
+        candidateFollowUps.push(
+          `這輪我手頭票數很充裕，我決定直接把票全部 All-in 砸在前面置位的【${frontB}】上！壞人八成想在後面衝贗品，大家跟我把票堆高，徹底阻截壞人衝票！`,
+          `我手頭存了滿滿的票！這輪我們好人直接在前置位的【${frontB}】重注 All-in，讓後面想衝贗品的壞人望塵莫及！`
+        );
+      }
+
+      // G. 投票給資訊，或極端棄票/豪賭戰術（依使用者修正：玩法是活的，要嘛投票去賭，要嘛棄票拚後盤）
+      if (pov.isGoodCamp && (pov.myInspectWasBlinded || (pov.myInspectLogs || []).length === 0) && Math.random() < 0.45) {
+        candidateFollowUps.push(
+          `這輪資訊不足玩法是活的，我決定直接棄票把籌碼存下，留到下一輪局勢明朗再一口氣重注翻盤！`,
+          `雖然這輪沒驗到想驗的，但玩法是活的！我依前面幾家的發言直接賭一把，把票砸在最被看好的獸首上！`,
+          `投票本身也是給全場資訊的一種，都不投只會讓自己落入灰色地帶！我依前面幾位的發言推測，決定把票投出表明立場！`
+        );
+      }
+
+      // H. 藥不然鎖定姬雲浮（依使用者修正：評估去偷看起來像姬雲浮的玩家，防第三回合穩拿分）
+      if (pov.myRole === '藥不然' && Math.random() < 0.30) {
+        const potentialJi = pov.otherPlayers.find(p => !(pov.knownTeammateIds || []).includes(p.id) && (beliefs.roleScores && beliefs.roleScores[p.id]?.jiYunFu > 25));
+        if (potentialJi) {
+          candidateFollowUps.push(
+            `我看${getPlayerColorDesc(potentialJi)}發言極其篤定胸有成竹，這氣場極度危險，大家千萬別被他輕易帶偏！`
+          );
+        }
+      }
+
+      // 若有命中任何延伸探討，挑選一則；若無，則使用自然的號召結尾
+      if (candidateFollowUps.length > 0 && Math.random() < 0.60) {
+        followUpSentence = getRandom(candidateFollowUps);
       } else {
-        const standardEvil = [
-          `${open}我親手查驗【${ins.beastName}】保證是【${statusWord}】，大家放心跟我投！`,
-          `別聽其他人瞎猜，我這隻【${ins.beastName}】我敢擔保是【${statusWord}】，跟我走準沒錯！${close}`,
-          `${open}【${ins.beastName}】這件我看了，做工沒得說，絕對是【${statusWord}】！`
-        ];
-        return finalizeSpeech(getRandom(standardEvil) + r3DeductionSuffix);
+        followUpSentence = close;
       }
     }
 
-    return finalizeSpeech(`${open}局勢還在觀察中，大家投票時務必保持清醒，大家千萬別相信他人的胡亂帶風向，${close}` + r3DeductionSuffix);
+    // 組合最終發言：[第一句獸首查驗資訊] + [第二句戰略探討/尾家號票] + [第三回合身分推斷結語]
+    const fullSpeech = `${firstSentence} ${followUpSentence}${r3DeductionSuffix}`;
+    return finalizeSpeech(fullSpeech);
   }
   }
     window.BotDeductionEngine = BotDeductionEngine;
@@ -9185,15 +9369,16 @@ container.appendChild(row);
  }, 500);  
  }  
   
- function getOnlineMyAvailableVotes(roundNum) {  
- if (!onlineRoomData || !myOnlinePlayerId) return 2;  
+ function getOnlineMyAvailableVotes(roundNum, targetPlayerId) {  
+ const pId = targetPlayerId || myOnlinePlayerId;
+ if (!onlineRoomData || !pId) return 2;  
  const totalGranted = 2 * roundNum;  
  let totalUsedInPrior = 0;  
   
  for (let r = 1; r < roundNum; r++) {  
  const rObj = (onlineRoomData.rounds || []).find(x => x.roundNum === r);  
- if (rObj && rObj.votes && rObj.votes[myOnlinePlayerId]) {  
- const myBallot = rObj.votes[myOnlinePlayerId];  
+ if (rObj && rObj.votes && rObj.votes[pId]) {  
+ const myBallot = rObj.votes[pId];  
  totalUsedInPrior += Object.values(myBallot).reduce((a, b) => a + (parseInt(b) || 0), 0);  
  }  
  }  
@@ -11367,7 +11552,7 @@ window.onlAdvanceNextRoundOrPersonVote = onlAdvanceNextRoundOrPersonVote;
           if (!roundObj.votes) roundObj.votes = {};
           if (roundObj.votes[mockPlayerId]) return;
 
-          const maxVotes = getOnlineMyAvailableVotes(roundObj.roundNum);
+          const maxVotes = getOnlineMyAvailableVotes(roundObj.roundNum, mockPlayerId);
 
           const botPOV = BotDeductionEngine.buildPOV(freshRoom, mockPlayerId);
           const beliefs = BotDeductionEngine.evaluateBeliefs(botPOV);
