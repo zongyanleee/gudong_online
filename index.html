@@ -8,7 +8,7 @@
  <meta name="apple-mobile-web-app-title" content="古董局中局">  
  <meta name="theme-color" content="#0a0a0a">  
  <meta name="format-detection" content="telephone=no">  
- <title>古董局中局 (v2.3.6)</title>  
+ <title>古董局中局 (v2.3.7)</title>  
  <script src="https://cdn.tailwindcss.com"></script>  
  <link rel="preconnect" href="https://fonts.googleapis.com">  
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
@@ -442,7 +442,8 @@
  </h3>  
  <span id="onlStepARoleLabel" class="text-sm font-bold text-amber-400 font-mono">角色：許願</span>  
  </div>  
- <div id="onlRoundBeastsGrid" class="grid grid-cols-4 gap-2"></div>  
+ <div id="onlStepAAmbushBanner" class="hidden p-3 bg-rose-950/80 border border-rose-700/80 rounded-xl text-center space-y-1 mb-2"></div>
+<div id="onlRoundBeastsGrid" class="grid grid-cols-4 gap-2"></div>  
  <div id="onlAppraiseResultBox" class="hidden bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-center space-y-1 mt-2">  
  <div class="text-[11px] text-neutral-400">查驗回饋：</div>  
  <div id="onlAppraiseResultText" class="text-xl font-black text-amber-400 tracking-wider"></div>  
@@ -2528,12 +2529,87 @@ class BotDeductionEngine {
       }
 
       const targetP = (room && room.players) ? room.players.find(x => x.id === targetId) : candidates[0];
-      if (targetP) targetP.isAmbushed = true;
       const targetName = targetP ? targetP.name : '對手';
+      const tc = (targetP && COLOR_PALETTE.find(c => c.id === targetP.colorId)) || COLOR_PALETTE[0];
+
+      if (targetP) {
+        // 精確判定玩家在當前輪次是否已經操作完畢（出現在藥不然之前的傳遞序中，或已有獸首查驗日誌）
+        // 核心規則：若目標已在藥不然之前操作過（如藥不然為第二回合尾家或往前偷襲），該偷襲延宕至下回合生效 (pendingAmbush = true)！
+        const hasPlayerActedThisRound = (pid) => {
+          if (!pid || pid === pov.myId) return false;
+          const passOrder = (roundObj && roundObj.passOrder) || (room && room.rounds && room.rounds[curRoundIdx] && room.rounds[curRoundIdx].passOrder) || [];
+          const myIdx = passOrder.indexOf(pov.myId);
+          const pIdx = passOrder.indexOf(pid);
+          const priorInOrder = pIdx !== -1 && (myIdx === -1 || pIdx < myIdx);
+          const rLogs = (roundObj && roundObj.turnLogs) || (room && room.rounds && room.rounds[curRoundIdx] && room.rounds[curRoundIdx].turnLogs) || {};
+          const hasLogs = rLogs && rLogs[pid] && rLogs[pid].inspect && rLogs[pid].inspect.length > 0;
+          return !!(priorInOrder || hasLogs);
+        };
+
+        const targetHasActed = hasPlayerActedThisRound(targetP.id);
+
+        // 1. 姬雲浮：永久封閉
+        if (targetP.role === '姬雲浮') {
+          targetP.isPermanentlyAmbushed = true;
+          if (targetHasActed) {
+            targetP.pendingAmbush = true;
+            targetP.pendingPermanentAmbush = true;
+            targetP.isAmbushed = false;
+          } else {
+            targetP.isAmbushed = true;
+            targetP.pendingAmbush = false;
+          }
+        }
+        // 2. 方震（自身延宕判定 ＆ 連帶許願時序判定）
+        else if (targetP.role === '方震') {
+          if (targetHasActed) {
+            targetP.pendingAmbush = true;
+            targetP.isAmbushed = false;
+          } else {
+            targetP.isAmbushed = true;
+            targetP.pendingAmbush = false;
+          }
+
+          const xu = (room && room.players) ? room.players.find(p => p.role === '許願') : null;
+          if (xu) {
+            const xuHasActed = hasPlayerActedThisRound(xu.id);
+            if (xuHasActed) {
+              xu.pendingAmbush = true;
+              xu.isAmbushed = false;
+            } else {
+              xu.isAmbushed = true;
+              xu.pendingAmbush = false;
+            }
+          }
+        }
+        // 3. 其他角色（如鄭國渠、黃煙煙、木戶加奈、許願、老朝奉）
+        else {
+          if (targetHasActed) {
+            targetP.pendingAmbush = true;
+            targetP.isAmbushed = false;
+          } else {
+            targetP.isAmbushed = true;
+            targetP.pendingAmbush = false;
+          }
+        }
+
+        if (roundObj) {
+          roundObj.ambushedPlayerId = targetP.id;
+          roundObj.ambushedPlayerName = targetP.name;
+          roundObj.ambushedPlayerColor = tc.name;
+          roundObj.yaoTargetId = targetP.id;
+          roundObj.yaoTargetName = targetP.name;
+          roundObj.yaoTargetColor = tc.name;
+        }
+      }
+
       return {
         ability: `偷襲了【${targetName}】`,
         abilityLocked: true,
-        ambushedPlayerId: targetId
+        ambushedPlayerId: targetId,
+        yaoTargetId: targetId,
+        yaoTargetName: targetName,
+        yaoTargetColor: tc.name
       };
     }
 
@@ -2587,7 +2663,7 @@ class BotDeductionEngine {
 
   // 鑑寶投票核心升級：好人全力投真品、壞人全力投贗品，不盲目分票，參考他人發言共識！
   // 鑑寶投票決策升級（依需求 5：好人努力依查驗與發言推測真品並依把握度投票；壞人努力依查驗與發言推測贗品並依把握度投票，努力幫贗品拉票）
-  // 查驗獸首投票策略：依使用者規則全面升級 (v2.3.6)
+  // 查驗獸首投票策略：依使用者規則全面升級 (v2.3.7)
   // 1. 每回合只會多2票，未投票者籌碼累積至下一回合 (嚴格扣除前幾輪已用票數)
   // 2. 被偷襲致盲或沒驗到想驗者低把握，但可用前面玩家發言去推測
   // 3. 置位太後面懷疑老朝奉在前面開技能擾亂反轉，就算驗到贗品也可以投看看
@@ -2992,7 +3068,7 @@ class BotDeductionEngine {
     }
   }
 
-  // 高動態博弈發言生成器 (v2.3.6 全面強化：
+  // 高動態博弈發言生成器 (v2.3.7 全面強化：
   // 1. 稱呼全用顏色不用對家 (需求5)
   // 2. 許願被偷襲絕不喊被偷，而是反咬或跟票 (需求11)
   // 3. 真姬雲浮未滿三分不跳；好人壞人可假跳姬雲浮拉票 (需求4, 9)
@@ -3000,7 +3076,7 @@ class BotDeductionEngine {
   // 5. 第三回合必須宣稱心中的老朝奉或許願/方震 (需求7)
   // 6. 好人掩護暴露的方震裝驗不到 (需求8)
   // 7. 言語攻擊他人破綻（特別是真人玩家）或假攻擊隊友 (需求5))
-  // 高動態博弈發言生成器 (v2.3.6 精準言語攻擊與防身分洩漏升級：
+  // 高動態博弈發言生成器 (v2.3.7 精準言語攻擊與防身分洩漏升級：
   // 1. 稱呼全用顏色不用對家 (需求5)
   // 2. 許願被偷襲絕不喊被偷，而是反咬或跟票 (需求11)
   // 3. 真姬雲浮未滿三分不跳；好人壞人可假跳姬雲浮拉票 (需求4, 9)
@@ -7509,6 +7585,29 @@ const pGrid = document.getElementById('onlPassiveBeastsGrid');
   
  // 判定 Step A 是否鎖定 (若方震被藥不然偷襲，則獸首查驗階段只能選一個)  
  const isFangZhenUnderAmbush = (me.role === '方震' && isUnderAmbush);  
+  
+ // 遭藥不然偷襲橫幅提示 (包含第三回合承接自第二回合尾家偷襲之延宕生效)
+ const ambushBannerA = document.getElementById('onlStepAAmbushBanner');
+ if (ambushBannerA) {
+   if (isUnderAmbush) {
+     ambushBannerA.classList.remove('hidden');
+     if (me.role === '姬雲浮') {
+       ambushBannerA.innerHTML = `
+         <div class="text-sm font-black text-rose-400">💥 姬雲浮整場封閉</div>
+         <div class="text-xs text-neutral-300 font-bold mt-0.5">遭藥不然偷襲觸發「整場封閉」宿命，後續所有回合均眼前一片漆黑，無法查驗獸首真偽！</div>
+       `;
+     } else {
+       ambushBannerA.innerHTML = `
+         <div class="text-sm font-black text-rose-400">💥 糟糕！你遭到了藥不然偷襲</div>
+         <div class="text-xs text-neutral-300 font-bold mt-0.5">你已被藥不然偷襲致盲，眼前一片漆黑，本輪無法查驗出任何真偽資訊！</div>
+       `;
+     }
+   } else {
+     ambushBannerA.classList.add('hidden');
+     ambushBannerA.innerHTML = '';
+   }
+ }  
+  
  let isStepALocked = false;  
  if (currentSubStep === 'b' || currentSubStep === 'c') {  
  isStepALocked = true;  
@@ -7627,8 +7726,8 @@ const pGrid = document.getElementById('onlPassiveBeastsGrid');
  let displayText = '';  
   
  if (isUnderAmbush) {  
- const ambushTexts = ['你被偷襲', '獸首被偷襲', '你眼前一片黑', '你被幹了', '你失血過多，有點暈眩'];  
- displayText = ambushTexts[Math.floor(Math.random() * ambushTexts.length)];  
+ const ambushTexts = ['你眼前一片黑', '獸首被偷襲', '你被偷襲了', '你失血過多，有點暈眩'];  
+ displayText = `【${b.name}】 ` + ambushTexts[Math.floor(Math.random() * ambushTexts.length)];  
  }  
 else if (me.role === '方震') {  
  if (!myLog.fangZhenDistinct) myLog.fangZhenDistinct = [];  
@@ -8484,12 +8583,13 @@ async function executeOnlineAdvanceToDiscussion(rParam) {
       console.error('本地切換至發言階段提示:', err);
     }
 
-    // 2. 寫入資料庫
+    // 2. 寫入資料庫（必須包含 room.players，保證尾家偷襲的 pendingAmbush 狀態能正確持久化至 Firestore）
     try {
       await db.doc(ONLINE_ROOM_DOC).update({
         status: 'discussion',
         currentSpeakerId: firstSpeakerId,
         rounds: room.rounds,
+        players: room.players,
         lastActivityTime: Date.now()
       });
     } catch(err) {
@@ -11447,6 +11547,17 @@ window.onlAdvanceNextRoundOrPersonVote = onlAdvanceNextRoundOrPersonVote;
             }
           } else if (passOrder.length >= totalPlayers) {
             roundObj.passOrder = passOrder;
+            if (skillResult && skillResult.ambushedPlayerId) {
+              roundObj.ambushedPlayerId = skillResult.ambushedPlayerId;
+              roundObj.ambushedPlayerName = skillResult.yaoTargetName;
+              roundObj.ambushedPlayerColor = skillResult.yaoTargetColor;
+              roundObj.yaoTargetId = skillResult.yaoTargetId;
+              roundObj.yaoTargetName = skillResult.yaoTargetName;
+              roundObj.yaoTargetColor = skillResult.yaoTargetColor;
+            }
+            if (freshRoom.rounds && freshRoom.rounds[freshRoom.currentRoundIdx]) {
+              freshRoom.rounds[freshRoom.currentRoundIdx] = roundObj;
+            }
             await executeOnlineAdvanceToDiscussion(freshRoom);
           }
         } catch(e) {
@@ -13144,14 +13255,44 @@ window.onlAdvanceNextRoundOrPersonVote = onlAdvanceNextRoundOrPersonVote;
       const targetP = G.players.find(p => p.id === G.yaoSelectedTargetId);
       const tc = COLOR_PALETTE.find(x => x.id === targetP.colorId);
 
+      const targetHasActed = (G.inspectedPlayerIds || []).includes(targetP.id);
       if (targetP.role === '方震') {
-        targetP.isAmbushed = true;
+        if (targetHasActed) {
+          targetP.pendingAmbush = true;
+          targetP.isAmbushed = false;
+        } else {
+          targetP.isAmbushed = true;
+          targetP.pendingAmbush = false;
+        }
         const xuP = G.players.find(p => p.role === '許願');
-        if (xuP) xuP.isAmbushed = true;
+        if (xuP) {
+          const xuHasActed = (G.inspectedPlayerIds || []).includes(xuP.id);
+          if (xuHasActed) {
+            xuP.pendingAmbush = true;
+            xuP.isAmbushed = false;
+          } else {
+            xuP.isAmbushed = true;
+            xuP.pendingAmbush = false;
+          }
+        }
       } else if (targetP.role === '姬雲浮') {
         targetP.isPermanentlyAmbushed = true;
+        if (targetHasActed) {
+          targetP.pendingAmbush = true;
+          targetP.pendingPermanentAmbush = true;
+          targetP.isAmbushed = false;
+        } else {
+          targetP.isAmbushed = true;
+          targetP.pendingAmbush = false;
+        }
       } else {
-        targetP.isAmbushed = true;
+        if (targetHasActed) {
+          targetP.pendingAmbush = true;
+          targetP.isAmbushed = false;
+        } else {
+          targetP.isAmbushed = true;
+          targetP.pendingAmbush = false;
+        }
       }
 
       const abilityItem = {
